@@ -81,7 +81,7 @@ func (s *Server) listDefenseExecutions(w http.ResponseWriter, r *http.Request) {
 func defenseExecutionID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, ok := pathInt(r, "executionID")
 	if !ok || id <= 0 {
-		writeErr(w, http.StatusBadRequest, "올바른 검증 실행 ID를 입력해 주세요")
+		writeErr(w, http.StatusBadRequest, "Please enter the correct verification execution ID")
 		return 0, false
 	}
 	return id, true
@@ -114,12 +114,12 @@ func (s *Server) exportDefenseExecution(w http.ResponseWriter, r *http.Request) 
 // alert: delayed audit records may still alter the independent prevention result.
 func defenseExecutionWindow(execution *db.DefenseExecution, now time.Time) (securitysource.Query, bool, error) {
 	if execution == nil || execution.Retest == nil || execution.Retest.FinishedAt == nil {
-		return securitysource.Query{}, false, errors.New("진단 실행이 종료된 뒤 증거를 수집해 주세요")
+		return securitysource.Query{}, false, errors.New("I need you to collect the evidence after the diagnosis is complete.")
 	}
 	switch execution.Retest.Status {
 	case "completed", "failed", "stopped":
 	default:
-		return securitysource.Query{}, false, errors.New("진단 실행이 종료된 뒤 증거를 수집해 주세요")
+		return securitysource.Query{}, false, errors.New("I need you to collect the evidence after the diagnosis is complete.")
 	}
 	start := execution.CreatedAt
 	if !execution.Retest.CreatedAt.IsZero() {
@@ -135,7 +135,7 @@ func defenseExecutionWindow(execution *db.DefenseExecution, now time.Time) (secu
 	}
 	start = start.Add(-30 * time.Second)
 	if !end.After(start) || end.Sub(start) > 24*time.Hour {
-		return securitysource.Query{}, false, errors.New("실행의 수집 시간 범위가 지원 범위를 벗어났습니다. 새 검증 실행을 시작해 주세요")
+		return securitysource.Query{}, false, errors.New("The collection time range of execution is out of support. Please start running new validations.")
 	}
 	return securitysource.Query{CorrelationID: execution.CorrelationID, Start: start, End: end}, complete, nil
 }
@@ -159,7 +159,7 @@ func (s *Server) collectDefenseExecution(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if execution.SourceKind == "file" {
-		writeErr(w, http.StatusConflict, "파일 연결 실행입니다. 감사·경보 로그 파일을 업로드해 주세요")
+		writeErr(w, http.StatusConflict, "This is a file association. Please upload the audit and alert log files.")
 		return
 	}
 	query, windowComplete, err := defenseExecutionWindow(execution, time.Now().UTC())
@@ -178,31 +178,31 @@ func (s *Server) collectDefenseExecution(w http.ResponseWriter, r *http.Request)
 	}
 	var sourceSnapshot db.SecuritySource
 	if json.Unmarshal(execution.SourceSnapshot, &sourceSnapshot) != nil || sourceSnapshot.ID != source.ID || sourceSnapshot.Revision != source.Revision || sourceSnapshot.Config != source.Config || source.Revision != execution.SourceRevision || !source.Enabled {
-		writeErr(w, http.StatusConflict, "보안 로그 연결이 변경됐습니다. 현재 설정으로 새 검증 실행을 시작해 주세요")
+		writeErr(w, http.StatusConflict, "The security log connection has changed. Please start running new verification with the current settings")
 		return
 	}
 	credentials, err := s.securitySourceCredentials(source)
 	if err != nil {
-		writeErr(w, http.StatusConflict, "저장된 보안 로그 인증 정보를 확인해 주세요")
+		writeErr(w, http.StatusConflict, "Please check the stored security log authentication information")
 		return
 	}
 	select {
 	case defenseCollectSlots <- struct{}{}:
 		defer func() { <-defenseCollectSlots }()
 	default:
-		writeErr(w, http.StatusTooManyRequests, "다른 증거 수집이 진행 중입니다. 잠시 후 다시 시도해 주세요")
+		writeErr(w, http.StatusTooManyRequests, "Another piece of evidence is in progress. Please try again in a moment.")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 	evidence, err := securitysource.Fetch(ctx, source.Config, credentials, query)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "보안 로그 증거를 수집하지 못했습니다. 연결 설정과 소스 상태를 확인해 주세요")
+		writeErr(w, http.StatusBadGateway, "We have not been able to gather any security log evidence. Please check your connection settings and source status.")
 		return
 	}
 	if !windowComplete {
 		evidence.Complete = false
-		evidence.Warnings = append(evidence.Warnings, "진단 종료 후 60초의 관측 기간이 아직 끝나지 않았습니다. 이후 다시 수집해 주세요")
+		evidence.Warnings = append(evidence.Warnings, "Sixty seconds of observation is not over yet.")
 	}
 	assessment, err := pg.SaveDefenseAssessment(ctx, id, executionID, evidence)
 	if err != nil {
@@ -221,7 +221,7 @@ func (s *Server) compareDefenseExecutions(w http.ResponseWriter, r *http.Request
 	baselineID, baselineErr := strconv.ParseInt(r.URL.Query().Get("baseline_id"), 10, 64)
 	currentID, currentErr := strconv.ParseInt(r.URL.Query().Get("current_id"), 10, 64)
 	if baselineErr != nil || currentErr != nil || baselineID <= 0 || currentID <= 0 || baselineID == currentID {
-		writeErr(w, http.StatusBadRequest, "서로 다른 기준 실행과 개선 후 실행 ID를 입력해 주세요")
+		writeErr(w, http.StatusBadRequest, "After running and improving different criteria, please enter the execution ID")
 		return
 	}
 	pg := s.pg(w)

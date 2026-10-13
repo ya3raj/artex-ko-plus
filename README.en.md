@@ -1,3 +1,5 @@
+> This is historical documentation of the underlying Korean edition. For the current English application and build instructions, see [README.md](README.md) and the [English version guide](docs/ENGLISH_VERSION.md).
+
 # AegisLoop: ARTEX-based attack and defense validation
 
 This extension builds on [ARTEX](https://github.com/Autumn-27/ARTEX) and [artex-ko](https://github.com/jiwoochris/artex-ko), retaining their attribution and [AGPL-3.0 license](LICENSE). One web app provides Overview, Offensive, independent Defensive cases, and Closed-loop workflows. The Korean [usage guide](docs/aegisloop.md) documents the current UI, APIs, and limitations; the ARTEX Korean-edition reference remains below.

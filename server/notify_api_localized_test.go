@@ -9,7 +9,7 @@ import (
 )
 
 // notify_api.go 의 알림 설정 API 응답 문구와 테스트 메시지를 한국어로 유지하는 회귀 방어
-// 테스트다. 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를 재사용한다.
+// 테스트다. 한국어 판정은 F3a 가 만든 assertEnglishError(한글 포함·중국어 한자 0)를 재사용한다.
 
 // TestNotifyErrorConstantsLocalized 는 응답 상수 10종과 테스트 메시지 상수 3종이 전부
 // 한국어임을 단언한다. 어느 하나라도 중국어로 되돌리면 이 테스트가 실패한다.
@@ -30,7 +30,7 @@ func TestNotifyErrorConstantsLocalized(t *testing.T) {
 		"notifyTestSummary":        notifyTestSummary,
 	}
 	for label, msg := range cases {
-		assertKoreanError(t, label, msg)
+		assertEnglishError(t, label, msg)
 	}
 }
 
@@ -47,7 +47,7 @@ func TestNotifyChannelLookupErrLocalized(t *testing.T) {
 	if got != notifyErrChannelNotFound {
 		t.Fatalf("응답 문구 = %q, 기대 = %q", got, notifyErrChannelNotFound)
 	}
-	assertKoreanError(t, "channel_not_found", got)
+	assertEnglishError(t, "channel_not_found", got)
 }
 
 // TestNotifyTestMessageLocalized 는 채널 연결 점검용 테스트 메시지를 순수 함수로 조립해
@@ -59,9 +59,9 @@ func TestNotifyTestMessageLocalized(t *testing.T) {
 		t.Fatalf("테스트 메시지 항목 수 = %d, 기대 = 1", len(msg.Items))
 	}
 	item := msg.Items[0]
-	assertKoreanError(t, "test.name", item.Name)
-	assertKoreanError(t, "test.class", item.VulnClass)
-	assertKoreanError(t, "test.summary", item.Summary)
+	assertEnglishError(t, "test.name", item.Name)
+	assertEnglishError(t, "test.class", item.VulnClass)
+	assertEnglishError(t, "test.summary", item.Summary)
 	if msg.HomeURL != base || item.DetailURL != base {
 		t.Fatalf("링크 보존 실패: HomeURL=%q DetailURL=%q (기대 %q)", msg.HomeURL, item.DetailURL, base)
 	}

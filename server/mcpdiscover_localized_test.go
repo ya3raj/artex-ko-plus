@@ -11,7 +11,7 @@ import (
 // 회귀 방어 테스트다. 네 오류 경로(stdio 명령 누락·http URL 누락·sse URL 누락·알 수 없는
 // 전송 방식)는 전부 실제로 서버에 접속(dial)하기 전에 반환되므로, DB·네트워크 없이
 // connectMCP 을 직접 호출해 반환 문구까지 검증한다. 한국어 판정은 F3a 가 만든
-// assertKoreanError(한글 포함·중국어 한자 0)를 재사용한다. 전송 방식 enum(stdio/http/sse)과
+// assertEnglishError(한글 포함·중국어 한자 0)를 재사용한다. 전송 방식 enum(stdio/http/sse)과
 // URL 은 와이어 식별자라 ASCII 로 남으며 한자 판정에 걸리지 않는다. 누군가 이 문구를
 // 중국어로 되돌리면 상수 핀 고정과 실제 경로가 함께 실패한다.
 func TestConnectMCPErrorsLocalized(t *testing.T) {
@@ -22,7 +22,7 @@ func TestConnectMCPErrorsLocalized(t *testing.T) {
 		{"sse_no_url", errMCPSSENoURL},
 		{"unknown_transport", errMCPUnknownTransportFmt},
 	} {
-		assertKoreanError(t, c.label, c.msg)
+		assertEnglishError(t, c.label, c.msg)
 	}
 
 	// 실제 경로: 네 거부 분기는 모두 dial 전에 반환한다.
@@ -39,6 +39,6 @@ func TestConnectMCPErrorsLocalized(t *testing.T) {
 		if err == nil {
 			t.Fatalf("%s: 오류가 없습니다(검증을 통과함)", c.label)
 		}
-		assertKoreanError(t, c.label, err.Error())
+		assertEnglishError(t, c.label, err.Error())
 	}
 }

@@ -16,13 +16,13 @@ import (
 // These errors are deliberately safe to show in a UI. Provider errors and raw
 // model output can contain credentials or source text and are never returned.
 var (
-	ErrInvalidCandidate = errors.New("검토할 후보 또는 근거의 형식·크기 한도를 확인하세요")
-	ErrNoProvider       = errors.New("후보 검토에 사용할 모델이 설정되지 않았습니다")
-	ErrModelCall        = errors.New("모델 호출이 실패했습니다. 연결 설정과 호출 한도를 확인한 뒤 이어서 검토하세요")
-	ErrRateLimited      = errors.New("모델 공급자의 요청 한도에 도달했습니다. 잠시 기다리거나 LLM 호출 한도를 조정한 뒤 이어서 검토하세요")
-	ErrInvalidOutput    = errors.New("모델 판정의 형식 또는 근거 참조를 확인할 수 없어 저장하지 않았습니다")
-	ErrTruncatedOutput  = errors.New("모델 응답이 출력 한도에서 중단되어 판정을 저장하지 않았습니다")
-	ErrToolsNotAllowed  = errors.New("후보 검토에서 허용하지 않는 도구 요청이 반환되어 판정을 저장하지 않았습니다")
+	ErrInvalidCandidate = errors.New("Check the format and size limits of the candidate or base to review")
+	ErrNoProvider       = errors.New("No model has been set for candidate review")
+	ErrModelCall        = errors.New("The model call failed. Check the connection settings and call limits, and then review them.")
+	ErrRateLimited      = errors.New("The model provider's request limit has been reached. Wait a while, adjust the LLM call limit, and then review it.")
+	ErrInvalidOutput    = errors.New("I didn't save the model's ruling because I couldn't see the format or the base reference")
+	ErrTruncatedOutput  = errors.New("Model response was interrupted at the output limit and no ruling was saved")
+	ErrToolsNotAllowed  = errors.New("No tool requests allowed in candidate review have returned and no rulings have been saved")
 )
 
 const (
@@ -30,8 +30,8 @@ const (
 	maxOutputTokens     = 4000
 	maxInputBytes       = 96 * 1024
 	maxOutputBytes      = 32 * 1024
-	staticLimit         = "제공된 소스 근거의 정적 판정이며, 실행 환경의 악용 가능성이나 실제 재현 성공을 확인한 결과는 아닙니다."
-	apiLimit            = "저장된 API 요청·응답만 검토했습니다. 새 요청이나 계정 간 비교를 실행하지 않았으며, 관측된 응답은 취약점 악용 성공을 뜻하지 않습니다."
+	staticLimit         = "It is a static determination of the source basis provided, and it is not the result of the potential for exploitation of the execution environment or the actual reenactment success."
+	apiLimit            = "We have only reviewed the saved API requests and responses. We have not executed new requests or cross-account comparisons, and the observed responses do not mean vulnerability exploits will be successful."
 )
 
 const reviewInstruction = `Review exactly ONE stored scanner candidate using only the supplied evidence. Return one JSON object and stop. Do not plan more work, request tools, execute commands, access files, browse, create findings or claim that you performed a new test.

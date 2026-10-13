@@ -30,7 +30,7 @@ func writeClosedLoopError(w http.ResponseWriter, err error) {
 		writeErr(w, http.StatusNotFound, err.Error())
 	default:
 		log.Printf("[closed-loop] operation failed: %v", err)
-		writeErr(w, http.StatusInternalServerError, "Closed-loop 평가를 처리하지 못했습니다")
+		writeErr(w, http.StatusInternalServerError, "Closed-loop evaluation failed to process")
 	}
 }
 func (s *Server) suggestClosedLoop(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +85,7 @@ func (s *Server) listClosedLoopIterations(w http.ResponseWriter, r *http.Request
 	if value := r.URL.Query().Get("limit"); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil || parsed < 1 || parsed > 100 {
-			writeErr(w, http.StatusBadRequest, "표시 개수는 1~100이어야 합니다")
+			writeErr(w, http.StatusBadRequest, "The number of marks should be 1-100")
 			return
 		}
 		limit = parsed
@@ -104,7 +104,7 @@ func (s *Server) listClosedLoopIterations(w http.ResponseWriter, r *http.Request
 func (s *Server) closedLoopRecord(w http.ResponseWriter, r *http.Request, export bool) {
 	id, ok := pathInt(r, "id")
 	if !ok || id <= 0 {
-		writeErr(w, http.StatusBadRequest, "올바른 반복 기록 ID를 입력하세요")
+		writeErr(w, http.StatusBadRequest, "Enter the correct repeat history ID")
 		return
 	}
 	pg := s.pg(w)

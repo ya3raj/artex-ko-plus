@@ -28,7 +28,7 @@ const (
 )
 
 // ErrInvalid identifies invalid or oversized input, including malformed logs.
-var ErrInvalid = errors.New("방어 규칙 평가 입력이 올바르지 않습니다")
+var ErrInvalid = errors.New("The Defense Rule Assessment Input is incorrect")
 
 type DatasetSummary struct {
 	Total   int `json:"total"`
@@ -75,17 +75,17 @@ func invalid(format string, args ...any) error {
 // matching, and no unevaluable referenced fields. This is log replay only.
 func Evaluate(ruleText, targetLogs, controlLogs string) (*Result, error) {
 	if len(targetLogs) > MaxCombinedLogBytes || len(controlLogs) > MaxCombinedLogBytes-len(targetLogs) {
-		return nil, invalid("대상·대조 로그 합계는 1 MiB 이하여야 합니다")
+		return nil, invalid("The total target and control log must be less than 1 MiB")
 	}
 	rule, err := parseRule(ruleText)
 	if err != nil {
 		return nil, err
 	}
-	target, err := parseLogs(targetLogs, "대상", MaxEvents)
+	target, err := parseLogs(targetLogs, "Target", MaxEvents)
 	if err != nil {
 		return nil, err
 	}
-	control, err := parseLogs(controlLogs, "대조", MaxEvents-len(target))
+	control, err := parseLogs(controlLogs, "Contrast", MaxEvents-len(target))
 	if err != nil {
 		return nil, err
 	}
@@ -113,19 +113,19 @@ func Evaluate(ruleText, targetLogs, controlLogs string) (*Result, error) {
 		}
 	}
 	if out.Target.Total == 0 {
-		out.Reasons = append(out.Reasons, "대상 로그가 비어 있어 평가를 완료할 수 없습니다")
+		out.Reasons = append(out.Reasons, "The target log is empty and cannot be completed for evaluation")
 	}
 	if out.Control.Total == 0 {
-		out.Reasons = append(out.Reasons, "대조 로그가 비어 있어 오탐 여부를 평가할 수 없습니다")
+		out.Reasons = append(out.Reasons, "The control log is empty, so you can't evaluate false positives")
 	}
 	if out.Target.Inconclusive+out.Control.Inconclusive > 0 {
-		out.Reasons = append(out.Reasons, "일부 이벤트의 참조 필드가 없거나 자료형이 달라 판정할 수 없습니다")
+		out.Reasons = append(out.Reasons, "You don't have a reference field for some events, or you can't determine if the type is different.")
 	}
 	if out.Target.Missed > 0 {
-		out.Reasons = append(out.Reasons, fmt.Sprintf("대상 이벤트 %d개가 규칙과 일치하지 않습니다", out.Target.Missed))
+		out.Reasons = append(out.Reasons, fmt.Sprintf("The target event %d does not match the rules", out.Target.Missed))
 	}
 	if out.Control.Matched > 0 {
-		out.Reasons = append(out.Reasons, fmt.Sprintf("대조 이벤트 %d개가 규칙과 일치하여 오탐이 발생했습니다", out.Control.Matched))
+		out.Reasons = append(out.Reasons, fmt.Sprintf("Contrast event %d match rule, false otam occurred", out.Control.Matched))
 	}
 	if out.Target.Missed > 0 || out.Control.Matched > 0 {
 		out.Verdict = "fail"
@@ -138,50 +138,50 @@ func Evaluate(ruleText, targetLogs, controlLogs string) (*Result, error) {
 
 func parseRule(raw string) ([]condition, error) {
 	if len(raw) > MaxRuleBytes {
-		return nil, invalid("규칙은 64 KiB 이하여야 합니다")
+		return nil, invalid("The rule must be 64 KiB.")
 	}
 	v, err := parseObject(raw)
 	if err != nil {
-		return nil, invalid("규칙 JSON: %s", err)
+		return nil, invalid("Rule JSON: %s", err)
 	}
 	if len(v) != 2 || v["version"] != json.Number("1") {
-		return nil, invalid("규칙에는 version: 1과 all 필드만 있어야 합니다")
+		return nil, invalid("The rule should only have the field of version: 1 and all.")
 	}
 	all, ok := v["all"].([]any)
 	if !ok || len(all) == 0 || len(all) > MaxConditions {
-		return nil, invalid("all에는 1~16개의 조건이 필요합니다")
+		return nil, invalid("All require 1 to 16 conditions.")
 	}
 	conditions := make([]condition, 0, len(all))
 	for i, rawCondition := range all {
 		c, ok := rawCondition.(map[string]any)
 		if !ok || len(c) != 3 {
-			return nil, invalid("조건 %d에는 field, op, value만 있어야 합니다", i+1)
+			return nil, invalid("%d must have only field, op, and value.", i+1)
 		}
 		field, fieldOK := c["field"].(string)
 		op, opOK := c["op"].(string)
 		value, valueOK := c["value"]
 		if !fieldOK || field == "" || utf8.RuneCountInString(field) > MaxFieldLength || !opOK || !valueOK {
-			return nil, invalid("조건 %d의 필드 이름 또는 연산자가 올바르지 않습니다", i+1)
+			return nil, invalid("The field name or operator of condition %d is invalid", i+1)
 		}
 		// Referenced names can appear in missing_fields and be persisted as
 		// JSONB. PostgreSQL cannot represent a decoded NUL in a JSON string.
 		if strings.ContainsRune(field, 0) {
-			return nil, invalid("조건 %d의 필드 이름에는 NUL 문자를 사용할 수 없습니다", i+1)
+			return nil, invalid("You cannot use NUL characters for field names in condition %d", i+1)
 		}
 		if op != "eq" && op != "neq" && op != "contains" {
-			return nil, invalid("조건 %d: eq, neq, contains 연산자만 지원합니다", i+1)
+			return nil, invalid("Condition %d: only eq, neq, and contains operators are supported", i+1)
 		}
 		switch value := value.(type) {
 		case string:
 			if len(value) > MaxRuleValueBytes {
-				return nil, invalid("조건 값은 4096바이트 이하여야 합니다")
+				return nil, invalid("The condition value must be less than 4096bytes")
 			}
 		case json.Number, bool:
 			if op == "contains" {
-				return nil, invalid("contains 조건 값은 문자열이어야 합니다")
+				return nil, invalid("contains The condition value must be a string")
 			}
 		default:
-			return nil, invalid("조건 값은 null이 아닌 문자열·숫자·참거짓이어야 합니다")
+			return nil, invalid("The condition value must be a string, a number, or a true lie, not null.")
 		}
 		conditions = append(conditions, condition{field: field, op: op, value: value})
 	}

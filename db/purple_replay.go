@@ -13,7 +13,7 @@ import (
 	"github.com/Autumn-27/artex/defenseeval"
 )
 
-var ErrDefenseReplayNotFound = errors.New("로그 재생 기록을 찾을 수 없습니다")
+var ErrDefenseReplayNotFound = errors.New("Log playback history not found")
 
 type DefenseReplayInput struct {
 	PlanRevision              int64  `json:"plan_revision"`
@@ -69,16 +69,16 @@ func replayHash(value string) string {
 
 func normalizeDefenseReplay(in DefenseReplayInput) (DefenseReplayInput, error) {
 	if in.PlanRevision <= 0 || in.ExpectedEvidenceVersion == nil || *in.ExpectedEvidenceVersion < 0 {
-		return in, fmt.Errorf("%w: 계획 및 증거 버전을 확인해 주세요", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : Please check the plan and proof version", ErrDefenseInvalid)
 	}
 	if raw, err := hex.DecodeString(in.ExpectedSourceFingerprint); err != nil || len(raw) != 16 {
-		return in, fmt.Errorf("%w: 원본 증거 식별자를 확인해 주세요", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : Please check the original evidence identifier", ErrDefenseInvalid)
 	}
 	if len(in.TargetLogs)+len(in.ControlLogs) > defenseeval.MaxCombinedLogBytes {
-		return in, fmt.Errorf("%w: 두 로그의 합계는 1 MiB 이하여야 합니다", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : the sum of the two logs must be less than 1 MiB", ErrDefenseInvalid)
 	}
 	var err error
-	in.Notes, err = defenseText(in.Notes, "메모", 0, 4000)
+	in.Notes, err = defenseText(in.Notes, "Memo", 0, 4000)
 	return in, err
 }
 
@@ -99,7 +99,7 @@ func (d *DB) RunDefenseReplay(ctx context.Context, findingID int64, in DefenseRe
 		return nil, ErrDefenseConflict
 	}
 	if state.Plan.RuleFormat != "event_filter" {
-		return nil, fmt.Errorf("%w: 로그 재생에는 event_filter 형식의 규칙이 필요합니다", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Log playback requires a rule in the format of event_filter", ErrDefenseInvalid)
 	}
 	result, err := defenseeval.Evaluate(state.Plan.RuleText, in.TargetLogs, in.ControlLogs)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrDefenseExecutionNotFound = errors.New("방어 검증 실행을 찾을 수 없습니다")
+var ErrDefenseExecutionNotFound = errors.New("No Defense Verification Run Found")
 
 type DefenseExecutionInput struct {
 	SourceKind                string                     `json:"source_kind"`
@@ -190,21 +190,21 @@ func getDefenseExecutionMetadataTx(ctx context.Context, tx *sql.Tx, findingID, i
 
 func createDefenseExecutionTx(ctx context.Context, tx *sql.Tx, findingID int64, retest *FindingRetest, in DefenseExecutionInput) (*DefenseExecution, error) {
 	if retest == nil || retest.ID <= 0 || retest.FindingID != findingID || in.PlanRevision <= 0 || in.ExpectedEvidenceVersion == nil || *in.ExpectedEvidenceVersion < 0 {
-		return nil, fmt.Errorf("%w: 실행 입력과 증거 버전을 확인해 주세요", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Check the execution input and the proof version", ErrDefenseInvalid)
 	}
 	if in.SourceKind == "" {
 		in.SourceKind = "splunk"
 	}
 	if in.SourceKind != "splunk" && in.SourceKind != "file" || in.SourceKind == "file" && (in.SourceID != 0 || in.FileConfig == nil) || in.SourceKind == "splunk" && (in.SourceID <= 0 || in.FileConfig != nil) {
-		return nil, fmt.Errorf("%w: 실행 증거 소스 종류와 설정을 확인해 주세요", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Check the execution evidence source type and settings", ErrDefenseInvalid)
 	}
 	var err error
-	in.RemediationNote, err = defenseText(in.RemediationNote, "개선 조치 설명", 0, 8000)
+	in.RemediationNote, err = defenseText(in.RemediationNote, "Improvement measures explained", 0, 8000)
 	if err != nil {
 		return nil, err
 	}
 	if in.BaselineID != nil && (*in.BaselineID <= 0 || in.RemediationNote == "") {
-		return nil, fmt.Errorf("%w: 기준 실행과 개선 조치 설명이 필요합니다", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Criteria execution and improvement measures need to be explained", ErrDefenseInvalid)
 	}
 	if err := LockFindingEvidenceTx(tx, findingID, nil); err != nil {
 		return nil, err
@@ -232,13 +232,13 @@ func createDefenseExecutionTx(ctx context.Context, tx *sql.Tx, findingID int64, 
 		var enabled, credentialSet bool
 		err = tx.QueryRowContext(ctx, `SELECT jsonb_build_object('id',id::text,'name',name,'revision',revision,'config',config,'enabled',enabled,'credential_set',octet_length(secret_cipher)>0,'updated_at',updated_at),revision,enabled,octet_length(secret_cipher)>0 FROM security_sources WHERE id=$1 FOR SHARE`, in.SourceID).Scan(&source, &revision, &enabled, &credentialSet)
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("%w: 증거 소스를 찾을 수 없습니다", ErrDefenseInvalid)
+			return nil, fmt.Errorf("%w: No evidence source found", ErrDefenseInvalid)
 		}
 		if err != nil {
 			return nil, err
 		}
 		if !enabled || !credentialSet {
-			return nil, fmt.Errorf("%w: 활성화되고 인증 정보가 설정된 증거 소스가 필요합니다", ErrDefenseInvalid)
+			return nil, fmt.Errorf("%w: Requires an evidence source that is activated and authenticated information is set", ErrDefenseInvalid)
 		}
 		var publicSource struct {
 			Config securitysource.Config `json:"config"`
@@ -247,7 +247,7 @@ func createDefenseExecutionTx(ctx context.Context, tx *sql.Tx, findingID int64, 
 			return nil, err
 		}
 		if _, err := securitysource.Validate(publicSource.Config); err != nil {
-			return nil, fmt.Errorf("%w: 증거 소스 설정을 확인해 주세요", ErrDefenseInvalid)
+			return nil, fmt.Errorf("%w : Check the evidence source settings", ErrDefenseInvalid)
 		}
 	}
 	if in.BaselineID != nil {
@@ -260,7 +260,7 @@ func createDefenseExecutionTx(ctx context.Context, tx *sql.Tx, findingID int64, 
 			return nil, err
 		}
 		if baseline.Retest == nil || baseline.Retest.FinishedAt == nil || baseline.Retest.FinishedAt.After(retest.CreatedAt) || !assessed {
-			return nil, fmt.Errorf("%w: 종료되고 판정이 저장된 이전 실행만 기준으로 사용할 수 있습니다", ErrDefenseInvalid)
+			return nil, fmt.Errorf("%w : Only the previous executions that have been terminated and the judgment is saved can be used as the basis", ErrDefenseInvalid)
 		}
 	}
 	var diagnosis json.RawMessage
@@ -433,21 +433,21 @@ func previewDefenseAssessment(a *DefenseAssessment) *DefenseAssessment {
 // completed test and correlated source artifacts can support its conclusions.
 func assessDefenseEvidence(e *DefenseExecution, evidence *securitysource.Evidence) (*DefenseAssessment, error) {
 	if e == nil || evidence == nil || evidence.CollectedAt.IsZero() || evidence.WindowStart.IsZero() || !evidence.WindowEnd.After(evidence.WindowStart) || evidence.WindowEnd.Sub(evidence.WindowStart) > 24*time.Hour || evidence.CollectedAt.Before(evidence.WindowEnd) || evidence.CollectedAt.After(time.Now().Add(5*time.Minute)) || len(evidence.Events) > 400 {
-		return nil, fmt.Errorf("%w: 증거 수집 시각·조회 범위·이벤트 수를 확인해 주세요", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Please check the time of collection of evidence, the scope of the inquiry, and the number of events.", ErrDefenseInvalid)
 	}
 	if _, err := uuid.Parse(e.CorrelationID); err != nil {
-		return nil, fmt.Errorf("%w: 실행 상관 ID가 올바르지 않습니다", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Execution Correlation ID is invalid", ErrDefenseInvalid)
 	}
 	raw, err := json.Marshal(evidence)
 	if err != nil {
-		return nil, fmt.Errorf("%w: 증거 형식이 올바르지 않습니다", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w: The evidence format is incorrect", ErrDefenseInvalid)
 	}
 	maxBytes := 16 << 20
 	if e.SourceKind == "file" {
 		maxBytes = 32 << 20
 	}
 	if len(raw) > maxBytes || defenseJSONContainsNUL(raw) {
-		return nil, fmt.Errorf("%w: 증거 크기나 문자를 확인해 주세요", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Check the size of the evidence or the text.", ErrDefenseInvalid)
 	}
 	if err := validateDefenseEvidenceSource(e, evidence); err != nil {
 		return nil, err
@@ -464,10 +464,10 @@ func assessDefenseEvidence(e *DefenseExecution, evidence *securitysource.Evidenc
 		out.Recommendations = append(out.Recommendations, diagnostic.Recommendation)
 	}
 	if evidence.Upload != nil {
-		add("file_coverage_attested", "observed", "파일 판정은 업로더가 확인한 로그 출처·조회 범위에 의존하며 독립적으로 검증한 수집 결과가 아닙니다", "원본 로그 시스템에서 조회 조건과 시간 범위를 확인하고 내보낸 파일을 보관하세요")
+		add("file_coverage_attested", "observed", "The file determination depends on the log source and inquiry scope confirmed by the uploader and is not an independently verified collection result.", "Check the lookup condition and time range from the source log system and archive the exported files")
 		if !evidence.Upload.CoverageComplete {
 			reliable = false
-			add("file_coverage_unconfirmed", "observed", "전체 조회 범위가 포함됐다는 업로더 확인이 없습니다", "감사·경보 로그가 실행 전체 시간 범위를 포함하는지 확인한 뒤 다시 업로드하세요")
+			add("file_coverage_unconfirmed", "observed", "There is no uploader confirmation that the full search scope is included.", "Make sure the audit/alert log contains the full time range of execution, and then upload it again.")
 		}
 		hasAudit, hasAlert := false, false
 		for _, file := range evidence.Upload.Files {
@@ -476,20 +476,20 @@ func assessDefenseEvidence(e *DefenseExecution, evidence *securitysource.Evidenc
 		}
 		if !hasAudit {
 			reliable = false
-			add("audit_file_missing", "observed", "감사 로그 파일이 제공되지 않았습니다", "실행 상관 ID와 조치 필드가 포함된 원본 감사 로그를 업로드하세요")
+			add("audit_file_missing", "observed", "Audit log file not provided", "Upload the original audit log with the execution correlation ID and action fields")
 		}
 		if !hasAlert && !evidence.Upload.NoAlerts {
 			reliable = false
-			add("alert_export_unconfirmed", "observed", "경보 파일도 경보 0건 확인도 제공되지 않았습니다", "같은 범위의 경보 파일을 업로드하거나 원본 조회에서 경보가 0건임을 확인하세요")
+			add("alert_export_unconfirmed", "observed", "No alarm files or zero alarm checks were provided.", "Upload an alarm file of the same range or confirm that the original lookup has zero alarms")
 		}
 	}
 	if e.Retest == nil || e.Retest.Status != "completed" || e.Retest.FinishedAt == nil || e.Retest.Error != "" {
 		reliable = false
-		add("retest_incomplete", "observed", "재검증이 정상 완료되지 않아 방어 판정을 보류합니다", "재검증 실행 상태와 오류를 확인하고 정상 완료된 실행의 증거를 다시 수집하세요")
+		add("retest_incomplete", "observed", "The revalidation is not complete, so we're withholding the defense ruling.", "Check the revalidation execution status and errors, and re-collect evidence of a normal completed execution")
 	}
 	if !evidence.Complete || len(evidence.Warnings) > 0 {
 		reliable = false
-		add("evidence_incomplete", "observed", "로그 조회가 불완전하거나 수집 경고가 있습니다", "로그 조회 범위·내보내기 한도·수집기 상태를 확인한 뒤 동일 실행의 증거를 다시 제출하세요")
+		add("evidence_incomplete", "observed", "Log lookups are incomplete or there is a collection warning", "Check the log lookup range, export limit, collector status, and submit evidence of the same execution again.")
 	}
 	if e.Retest != nil {
 		start := e.Retest.CreatedAt
@@ -498,7 +498,7 @@ func assessDefenseEvidence(e *DefenseExecution, evidence *securitysource.Evidenc
 		}
 		if start.IsZero() || evidence.WindowStart.After(start.Add(-30*time.Second)) || e.Retest.FinishedAt != nil && (e.Retest.FinishedAt.Before(start) || evidence.WindowEnd.Before(*e.Retest.FinishedAt)) {
 			reliable = false
-			add("window_incomplete", "observed", "조회 범위가 재검증 실행 구간을 완전히 포함하지 않습니다", "실행 시작 30초 전부터 종료 후 수집 대기 구간까지 포함해 다시 조회하세요")
+			add("window_incomplete", "observed", "The lookup scope does not fully include the revalidation execution interval", "Start 30s before start and after end, and then lookup again, including the waiting section for collection")
 		}
 	}
 	audits, alerts, blocked, allowed, unknown := 0, 0, 0, 0, 0
@@ -527,11 +527,11 @@ func assessDefenseEvidence(e *DefenseExecution, evidence *securitysource.Evidenc
 	}
 	if inconsistent {
 		reliable = false
-		add("event_inconsistent", "observed", "실행 상관 ID·이벤트 시각·식별자가 일관되지 않습니다", "감사·경보 로그에 같은 ARTEX 실행 UUID가 기록되는지와 시각·중복 수집 설정을 확인하세요")
+		add("event_inconsistent", "observed", "Execution Correlation ID·Event time·Imperfection is inconsistent", "Check whether the same ARTEX execution UUID is recorded in the audit and alarm logs, and the visual and duplied collection settings")
 	}
 	if audits == 0 {
 		reliable = false
-		add("audit_missing", "observed", "이 실행에 연결된 감사 로그가 없습니다", "재검증 요청의 상관 헤더 전달, 감사 로그 내보내기 범위와 상관 필드 매핑을 확인하세요. 로그가 없다는 이유만으로 미탐을 확정할 수 없습니다")
+		add("audit_missing", "observed", "There is no audit log associated with this execution", "Check the correlation header delivery of the reverup, audit log export range and correlation field mapping of the request. You cannot confirm the missing information just because there is no log")
 	}
 	if !reliable {
 		return out, nil
@@ -541,11 +541,11 @@ func assessDefenseEvidence(e *DefenseExecution, evidence *securitysource.Evidenc
 	} else {
 		settled := e.Retest.FinishedAt.Add(60 * time.Second)
 		if evidence.CollectedAt.Before(settled) || evidence.WindowEnd.Before(settled) {
-			add("settling", "observed", "경보 수집 대기 시간 60초가 아직 충족되지 않았습니다", "재검증 종료 60초 뒤까지의 로그를 다시 수집한 후 미탐 여부를 확인하세요")
+			add("settling", "observed", "The alarm collection wait time of 60s has not yet been met", "Re-collect the logs up to sixty seconds after the end of the revalidation and check if they are untamed.")
 		} else {
 			out.Detection = "missed"
-			add("alert_absent", "observed", "제공된 조회 범위에 감사 로그는 있지만 동일 실행에 연결된 경보가 없습니다", "같은 실행 UUID로 원본 경보 조회와 내보내기 범위를 다시 확인하세요")
-			add("rule_gap", "hypothesis", "규칙 조건·필드 매핑·활성화 또는 경보 UUID 전달 누락이 원인일 수 있지만 이 로그만으로 확정할 수 없습니다", "탐지 규칙 조건과 활성화 상태, 경보의 상관 ID 전달을 각각 점검하고 변경 후 새 실행으로 비교하세요")
+			add("alert_absent", "observed", "There is an audit log in the supplied lookup range, but there is no alarm associated with the same execution", "Re-check the original alarm lookup and export range with the same run UUID")
+			add("rule_gap", "hypothesis", "Rule conditions, field mapping, activation, or omission of alarm UUID delivery may be the cause, but this log alone cannot be determined", "Check the detection rule condition, activation status, and alert correlation ID forwarding respectively, and compare them with new executions after making changes")
 		}
 	}
 	switch {
@@ -553,9 +553,9 @@ func assessDefenseEvidence(e *DefenseExecution, evidence *securitysource.Evidenc
 		out.Prevention = "blocked"
 	case allowed > 0 && blocked == 0 && unknown == 0:
 		out.Prevention = "not_blocked"
-		add("audit_allowed", "observed", "감사 로그에 접근 허용 조치가 기록됐습니다", "해당 취약점의 인가·차단 정책을 검토하고 실제 변경 내용을 남겨 후속 실행으로 검증하세요")
+		add("audit_allowed", "observed", "Allow access to the audit log.", "Review the policy of authorization and block of the vulnerability and leave actual changes to verify it with subsequent execution")
 	default:
-		add("action_ambiguous", "observed", "감사 로그의 조치가 혼합되거나 명시되지 않았습니다", "조치 필드가 실제 blocked 또는 allowed 결과를 기록하도록 매핑하고 혼합 결과의 원인을 확인하세요")
+		add("action_ambiguous", "observed", "The measures in the audit log are not mixed or specified", "Map the action fields to record actual blocked or allowed results and determine the cause of the mixed results")
 	}
 	return out, nil
 }
@@ -563,7 +563,7 @@ func assessDefenseEvidence(e *DefenseExecution, evidence *securitysource.Evidenc
 func validateDefenseEvidenceSource(e *DefenseExecution, evidence *securitysource.Evidence) error {
 	if e.SourceKind != "file" {
 		if evidence.Upload != nil {
-			return fmt.Errorf("%w: Splunk 실행에는 파일 증거를 저장할 수 없습니다", ErrDefenseInvalid)
+			return fmt.Errorf("%w : Splunk executable cannot save file evidence", ErrDefenseInvalid)
 		}
 		return nil
 	}
@@ -572,33 +572,33 @@ func validateDefenseEvidenceSource(e *DefenseExecution, evidence *securitysource
 		return err
 	}
 	if evidence.Upload == nil || evidence.Upload.Config != config {
-		return fmt.Errorf("%w: 실행에 고정된 파일 출처·필드 매핑과 일치하는 업로드 증거가 필요합니다", ErrDefenseInvalid)
+		return fmt.Errorf("%w : Requires upload evidence consistent with file origin and field mapping fixed to execution", ErrDefenseInvalid)
 	}
 	if len(evidence.Upload.Files) > 2 {
-		return fmt.Errorf("%w: 감사·경보 파일은 각각 하나만 제공할 수 있습니다", ErrDefenseInvalid)
+		return fmt.Errorf("%w : Audit/alarm files can only be provided with one.", ErrDefenseInvalid)
 	}
 	total := 0
 	seen := map[string]bool{}
 	for _, file := range evidence.Upload.Files {
 		sum := sha256.Sum256([]byte(file.Content))
 		if file.Kind != "audit" && file.Kind != "alert" || seen[file.Kind] || file.Name == "" || file.Bytes != len(file.Content) || file.Rows < 0 || file.SHA256 != fmt.Sprintf("%x", sum) {
-			return fmt.Errorf("%w: 업로드 파일의 원본·해시·출처 정보가 일치하지 않습니다", ErrDefenseInvalid)
+			return fmt.Errorf("%w : The original, sash, and source information of the upload file does not match", ErrDefenseInvalid)
 		}
 		seen[file.Kind] = true
 		total += len(file.Content)
 	}
 	if evidence.Upload.NoAlerts && seen["alert"] {
-		return fmt.Errorf("%w: 경보 파일과 경보 0건 확인을 동시에 제출할 수 없습니다", ErrDefenseInvalid)
+		return fmt.Errorf("%w : You cannot submit alarm files and zero alarm confirmations at the same time", ErrDefenseInvalid)
 	}
 	if evidence.Upload.NoAlerts {
 		for _, event := range evidence.Events {
 			if event.Kind == "alert" {
-				return fmt.Errorf("%w: 경보 0건 확인과 실제 경보 이벤트가 모순됩니다", ErrDefenseInvalid)
+				return fmt.Errorf("%w: Zero alarm check and actual alarm event are contradictory", ErrDefenseInvalid)
 			}
 		}
 	}
 	if total > securitysource.MaxUploadBytes {
-		return fmt.Errorf("%w: 업로드 원본 크기 한도를 넘었습니다", ErrDefenseInvalid)
+		return fmt.Errorf("%w: Uploaded over the original size limit", ErrDefenseInvalid)
 	}
 	return nil
 }
@@ -646,11 +646,11 @@ func defenseExecutionFileConfig(e *DefenseExecution) (securitysource.FileConfig,
 		Config   securitysource.FileConfig `json:"config"`
 	}
 	if json.Unmarshal(e.SourceSnapshot, &snapshot) != nil || snapshot.Kind != "file" || snapshot.Revision != 1 || e.SourceRevision != 1 || e.SourceID != 0 {
-		return snapshot.Config, fmt.Errorf("%w: 파일 출처 스냅샷이 올바르지 않습니다", ErrDefenseInvalid)
+		return snapshot.Config, fmt.Errorf("%w : File source snapshot is invalid", ErrDefenseInvalid)
 	}
 	config, err := securitysource.ValidateFileConfig(snapshot.Config)
 	if err != nil || config != snapshot.Config || snapshot.Name != config.Label {
-		return config, fmt.Errorf("%w: 파일 출처 스냅샷 설정이 올바르지 않습니다", ErrDefenseInvalid)
+		return config, fmt.Errorf("%w : File source snapshot settings are incorrect", ErrDefenseInvalid)
 	}
 	return config, nil
 }
@@ -720,59 +720,59 @@ func (d *DB) CompareDefenseExecutions(ctx context.Context, findingID, baselineID
 	out := &DefenseComparison{Baseline: baseline, Current: current, Comparable: true, Reasons: []string{}}
 	reject := func(reason string) { out.Comparable = false; out.Reasons = append(out.Reasons, reason) }
 	if baselineID == currentID || current.BaselineID == nil || *current.BaselineID != baselineID {
-		reject("개선 실행이 선택한 기준 실행과 명시적으로 연결되지 않았습니다")
+		reject("Improvement execution is not explicitly associated with the selected reference execution")
 	}
 	if current.RemediationNote == "" {
-		reject("개선 조치 설명이 없습니다")
+		reject("There is no explanation for improvement measures")
 	}
 	baselineScope, baselineScopeOK := defenseDiagnosisScope(baseline.DiagnosisSnapshot)
 	currentScope, currentScopeOK := defenseDiagnosisScope(current.DiagnosisSnapshot)
 	if !baselineScopeOK || !currentScopeOK {
-		reject("원본 진단 범위 스냅샷이 없어 동일 대상 여부를 확인할 수 없습니다")
+		reject("No original diagnostic range snapshots can't determine if they are the same target")
 	} else if baselineScope != currentScope {
-		reject("두 실행의 원본 대상 자산·취약점 유형·작업 제약이 다릅니다")
+		reject("The original target assets, vulnerable types, and work constraints of the two executions are different")
 	}
 
 	if baseline.SourceKind != current.SourceKind {
-		reject("두 실행의 증거 소스 종류가 다릅니다")
+		reject("Proof of the two executions The source types are different")
 	} else if baseline.SourceKind == "file" {
 		baselineConfig, baselineErr := defenseExecutionFileConfig(baseline)
 		currentConfig, currentErr := defenseExecutionFileConfig(current)
 		if baselineErr != nil || currentErr != nil || baselineConfig != currentConfig {
-			reject("두 실행의 파일 로그 출처 이름 또는 필드 매핑이 다릅니다")
+			reject("The file log origin name or field mapping of the two executions is different")
 		}
 	} else if baseline.SourceID != current.SourceID || baseline.SourceRevision != current.SourceRevision {
-		reject("두 실행의 증거 소스 또는 설정 버전이 다릅니다")
+		reject("The evidence source or set version of the two executions is different")
 	}
 	if current.State != "current" {
-		reject("현재 실행 이후 계획·취약점 증거·대상 자산·작업 제약·소스 설정이 변경됐습니다")
+		reject("Since the current implementation, the planning, vulnerable evidence, target assets, work constraints, and source settings have been changed.")
 	}
 	for _, e := range []*DefenseExecution{baseline, current} {
 		if e.Retest == nil || e.Retest.Status != "completed" || e.Retest.FinishedAt == nil {
-			reject("두 재검증 모두 정상 완료되어야 합니다")
+			reject("Both re-verifications must be completed normally.")
 			break
 		}
 	}
 	if len(baseline.Assessments) == 0 || len(current.Assessments) == 0 {
-		reject("두 실행 모두 저장된 소스 판정이 필요합니다")
+		reject("Both executions require a saved source determination")
 	} else {
 		for _, a := range []*DefenseAssessment{baseline.Assessments[0], current.Assessments[0]} {
 			if a.Detection == "inconclusive" || a.Prevention == "inconclusive" {
-				reject("최신 판정에 불확실한 탐지·차단 결과가 있어 개선 여부를 확정할 수 없습니다")
+				reject("The latest judgment has uncertain detection and interception results, so it is not possible to determine whether it is improved or not")
 				break
 			}
 		}
 	}
 	if baseline.Retest != nil && baseline.Retest.FinishedAt != nil && current.Retest != nil && baseline.Retest.FinishedAt.After(current.Retest.CreatedAt) {
-		reject("기준 실행이 개선 실행보다 먼저 종료되지 않았습니다")
+		reject("Basement execution did not end before improved execution")
 	}
 	// Correlation UUIDs are intentionally different per run. Comparability is
 	// established by the same source configuration, not equality of raw IDs.
 	if _, err := uuid.Parse(baseline.CorrelationID); err != nil {
-		reject("기준 실행 상관 ID가 올바르지 않습니다")
+		reject("The reference execution correlation ID is invalid")
 	}
 	if _, err := uuid.Parse(current.CorrelationID); err != nil {
-		reject("개선 실행 상관 ID가 올바르지 않습니다")
+		reject("The Arc de Triombole ID is invalid")
 	}
 	return out, tx.Commit()
 }

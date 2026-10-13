@@ -62,7 +62,7 @@ func (s *Server) exportFindingDefenseReplay(w http.ResponseWriter, r *http.Reque
 	}
 	runID, ok := pathInt(r, "runID")
 	if !ok || runID <= 0 {
-		writeErr(w, http.StatusBadRequest, "올바른 재생 기록 ID를 입력해 주세요")
+		writeErr(w, http.StatusBadRequest, "Please enter the correct playback history ID")
 		return
 	}
 	pg := s.pg(w)

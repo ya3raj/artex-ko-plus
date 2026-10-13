@@ -449,7 +449,7 @@ func TestOffensiveUploadedReviewUsesImmutableSelectedScope(t *testing.T) {
 		Operations: []offensiveOperation{{ID: "GET /users", Method: "GET", Path: "/users"}, {ID: "GET /admin", Method: "GET", Path: "/admin"}},
 	}}
 	description, goal, seed, err := offensiveReviewGoal(run)
-	if err != nil || seed != "http://service.test/v1" || !strings.Contains(description, "사용자 API") || !strings.Contains(goal, `"path":"/users"`) || strings.Contains(goal, `"path":"/admin"`) || strings.Contains(goal, "crapi-web") || !strings.Contains(goal, "token used for the scanner was transient") {
+	if err != nil || seed != "http://service.test/v1" || !strings.Contains(description, "User API") || !strings.Contains(goal, `"path":"/users"`) || strings.Contains(goal, `"path":"/admin"`) || strings.Contains(goal, "crapi-web") || !strings.Contains(goal, "token used for the scanner was transient") {
 		t.Fatal(description, goal, seed, err)
 	}
 	for _, mutate := range []func(*offensiveRun){

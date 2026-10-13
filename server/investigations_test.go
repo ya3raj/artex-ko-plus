@@ -172,7 +172,7 @@ func TestInvestigationMarkerWindow(t *testing.T) {
 	if collection.Events[1].Raw != "source-before" || collection.Events[2].Timestamp != end || len(collection.Events) != 5 || len(collection.Warnings) != 2 || collection.Warnings[0] != "existing source limitation" {
 		t.Fatal("marker bounding changed evidence or discarded source limitations")
 	}
-	if !strings.Contains(collection.Warnings[1], "인증 수단이 아니므로") {
+	if !strings.Contains(collection.Warnings[1], "not an authentication method") {
 		t.Fatal("known marker was presented as authenticated source identity")
 	}
 	// No evidence or runs should remain an empty collection, not manufacture

@@ -45,12 +45,12 @@ func investigationError(w http.ResponseWriter, err error) {
 	case errors.Is(err, db.ErrInvestigationRunNotFound), errors.Is(err, db.ErrInvestigationNotFound), errors.Is(err, db.ErrFindingNotFound), errors.Is(err, db.ErrSecuritySourceNotFound):
 		writeErr(w, 404, err.Error())
 	case errors.Is(err, db.ErrInvestigationRunInactive), errors.Is(err, db.ErrDefenseConflict), errors.Is(err, db.ErrTaskArchiveState):
-		writeErr(w, 409, "취약점 근거·로그 연결 또는 작업 상태가 변경됐습니다. 새로고침 후 다시 조사해 주세요")
+		writeErr(w, 409, "Vulnerability based on/log connection or working status has changed. Please re-exagate after refresh")
 	case errors.Is(err, db.ErrDefenseInvalid), errors.Is(err, securitysource.ErrInvalid):
 		writeErr(w, 400, err.Error())
 	default:
 		log.Printf("[investigation] operation failed: %v", err)
-		writeErr(w, 500, "침해 조사 기록을 처리하지 못했습니다")
+		writeErr(w, 500, "Failed to process breach investigation records")
 	}
 }
 func (s *Server) listFindingInvestigations(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +72,7 @@ func (s *Server) listFindingInvestigations(w http.ResponseWriter, r *http.Reques
 }
 func validateInvestigationRequest(in investigationRequest) error {
 	if in.SourceKind != "file" && in.SourceKind != "splunk" {
-		return fmt.Errorf("로그 연결 방식을 선택해 주세요")
+		return fmt.Errorf("Please select a log connection method")
 	}
 	if err := investigation.ValidateScope(in.Scope, time.Now()); err != nil {
 		return err
@@ -81,20 +81,20 @@ func validateInvestigationRequest(in investigationRequest) error {
 		return err
 	}
 	if in.ExpectedEvidenceVersion == nil || *in.ExpectedEvidenceVersion < 0 || len(in.ExpectedSourceFingerprint) != 32 {
-		return fmt.Errorf("취약점 근거를 새로고침해 주세요")
+		return fmt.Errorf("Please refresh the grounds for the vulnerability.")
 	}
 	if len([]rune(in.Title)) > 200 || len([]rune(in.Question)) > 4000 || strings.ContainsRune(in.Title+in.Question, 0) {
-		return fmt.Errorf("제목은 200자, 조사 질문은 4000자 이내로 입력해 주세요")
+		return fmt.Errorf("The title is two hundred characters, and the inquiry question is less than four thousand characters.")
 	}
 	if in.SourceKind == "file" {
 		if in.SourceID != 0 || in.ExpectedSourceRevision != 0 || len(in.Sourcetypes) > 0 {
-			return fmt.Errorf("파일 조사에는 Splunk 연결을 지정하지 않습니다")
+			return fmt.Errorf("File survey does not specify a Splunk connection")
 		}
 		if len([]rune(strings.TrimSpace(in.FileLabel))) < 1 || len([]rune(in.FileLabel)) > 120 || strings.ContainsRune(in.FileLabel, 0) {
-			return fmt.Errorf("파일 로그 출처 이름을 1~120자로 입력해 주세요")
+			return fmt.Errorf("Please enter the file log source name in 1~120 characters")
 		}
 	} else if in.SourceID <= 0 || in.ExpectedSourceRevision <= 0 || len(in.Files) > 0 {
-		return fmt.Errorf("활성 Splunk 연결을 선택하고 파일은 별도로 조사해 주세요")
+		return fmt.Errorf("Select an active Splunk connection and investigate the file separately")
 	}
 	return nil
 }
@@ -107,7 +107,7 @@ func (s *Server) investigationSource(ctx context.Context, pg *db.DB, in investig
 		return nil, err
 	}
 	if !source.Enabled || !source.CredentialSet {
-		return nil, fmt.Errorf("%w: 인증 정보가 있는 활성 연결을 선택해 주세요", securitysource.ErrInvalid)
+		return nil, fmt.Errorf("%w : Please select an active connection with authentication information", securitysource.ErrInvalid)
 	}
 	if source.Revision != in.ExpectedSourceRevision {
 		return nil, db.ErrDefenseConflict
@@ -141,7 +141,7 @@ func (s *Server) previewFindingInvestigation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if in.SourceKind != "splunk" {
-		writeErr(w, 400, "검색 미리보기는 Splunk 연결에서 사용할 수 있습니다")
+		writeErr(w, 400, "Search preview is available in Splunk connections")
 		return
 	}
 	source, err := s.investigationSource(r.Context(), pg, in)
@@ -194,7 +194,7 @@ func (s *Server) runFindingInvestigation(w http.ResponseWriter, r *http.Request)
 	}
 	title := strings.TrimSpace(in.Title)
 	if title == "" {
-		title = "과거 로그 침해 조사"
+		title = "Investigating past log breaches"
 	}
 	out := db.FindingInvestigation{Title: title, Question: in.Question, Scope: in.Scope, Mapping: in.Mapping, SourceKind: in.SourceKind, SourceID: in.SourceID, SourceRevision: in.ExpectedSourceRevision, EvidenceVersion: overview.EvidenceVersion, SourceFingerprint: overview.SourceFingerprint}
 	if in.SourceKind == "file" {
@@ -261,7 +261,7 @@ func boundInvestigationMarkers(c *investigation.Collection, runs []db.Investigat
 		}
 	}
 	if c.Stats.KnownARTEX > 0 {
-		c.Warnings = append(c.Warnings, "ARTEX 구분은 같은 취약점의 등록 실행 ID와 시간 구간 일치에 근거합니다. 표식은 인증 수단이 아니므로 원본 요청·점검 일정과 대조하세요.")
+		c.Warnings = append(c.Warnings, "The ARTEX classification is based on the registration execution ID and time interval matching of the same vulnerability. The markings are not an authentication method, so contrast them with the original request and check schedule.")
 	}
 }
 func investigationPreview(out *db.FindingInvestigation) *db.FindingInvestigation {
@@ -281,7 +281,7 @@ func (s *Server) readInvestigation(w http.ResponseWriter, r *http.Request) (*db.
 	}
 	iid, ok := pathInt(r, "investigationID")
 	if !ok || iid <= 0 {
-		writeErr(w, 400, "조사 ID를 확인해 주세요")
+		writeErr(w, 400, "Please check your investigation ID.")
 		return nil, false
 	}
 	pg := s.pg(w)

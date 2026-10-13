@@ -27,18 +27,18 @@ import (
 // the exchange status, localized to Korean (BRIEF 현지화 방침). "Worker" and
 // "메인 에이전트"/"메인 대화" match the UI terms; "[btw]" log lines stay as-is.
 const (
-	sideErrCtxNotSaved        = "곁질문 컨텍스트가 아직 저장되지 않았습니다. 다시 시도해 주세요."
-	sideErrModelConfigChanged = "모델 설정이 삭제되었거나 변경되었습니다. 먼저 메인 에이전트를 실행해 컨텍스트를 갱신해 주세요."
-	sideErrServiceUnavailable = "곁질문 서비스를 사용할 수 없습니다."
-	sideErrTaskArchived       = "작업이 보관되었거나 삭제되는 중입니다."
-	sideErrWorkerDeleted      = "Worker 가 삭제되었습니다."
-	sideErrBadQuestion        = "질문은 1–4000자여야 하며, 유효한 요청 ID 를 함께 보내야 합니다."
-	sideErrTaskArchiving      = "작업을 보관하거나 삭제하는 중입니다."
-	sideErrRequestIDReused    = "같은 요청 ID 를 서로 다른 질문에 사용할 수 없습니다."
-	sideErrNoSnapshot         = "아직 컨텍스트 스냅샷이 없습니다. 먼저 메인 에이전트를 실행해 주세요."
-	sideErrConcurrencyLimit   = "곁질문 요청이 동시 실행 상한에 도달했습니다. 잠시 후 다시 시도해 주세요."
-	sideErrAnswerStopped      = "답변이 중지되었습니다."
-	sideErrAnswerTimeout      = "곁질문 답변이 120초를 초과하여 중지되었습니다."
+	sideErrCtxNotSaved        = "The next-question context has not yet been saved. Please try again."
+	sideErrModelConfigChanged = "The model settings have been deleted or changed. First, run the main agent to update the context."
+	sideErrServiceUnavailable = "You cannot use the inter-question service."
+	sideErrTaskArchived       = "The work is being archived or deleted."
+	sideErrWorkerDeleted      = "The worker has been removed."
+	sideErrBadQuestion        = "Questions must be 1–4000 characters long and must be sent with a valid request ID."
+	sideErrTaskArchiving      = "You are keeping or deleting a job."
+	sideErrRequestIDReused    = "The same request ID is not available for different questions."
+	sideErrNoSnapshot         = "There are no context snapshots yet. Run the main agent first."
+	sideErrConcurrencyLimit   = "The request for a side question has reached the upper limit for simultaneous execution. Please try again in a moment."
+	sideErrAnswerStopped      = "The answer has stopped."
+	sideErrAnswerTimeout      = "The answer to the question has been stopped for over 120s."
 )
 
 type sideRun struct {

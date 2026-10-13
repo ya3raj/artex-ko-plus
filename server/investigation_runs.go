@@ -56,7 +56,7 @@ func (s *Server) readInvestigationRun(w http.ResponseWriter, r *http.Request) (*
 	}
 	id, ok := pathInt(r, "runID")
 	if !ok || id <= 0 {
-		writeErr(w, 400, "조사 실행 ID를 확인해 주세요")
+		writeErr(w, 400, "Please check the investigation execution ID")
 		return nil, nil, false
 	}
 	run, err := s.m.pg.GetInvestigationRun(r.Context(), base.FindingID, id)
@@ -145,7 +145,7 @@ func (s *Server) startInvestigationRun(w http.ResponseWriter, r *http.Request) {
 	}
 	in.Question = strings.TrimSpace(in.Question)
 	if utf8.RuneCountInString(in.Question) > 4000 || strings.ContainsRune(in.Question, 0) {
-		writeErr(w, 400, "조사 질문은 NUL 문자 없이 4000자 이내로 입력해 주세요")
+		writeErr(w, 400, "Please enter the inquiry question in 4000characters without NUL text")
 		return
 	}
 	if in.Question == "" {
@@ -160,7 +160,7 @@ func (s *Server) startInvestigationRun(w http.ResponseWriter, r *http.Request) {
 	ready := s.llmOn && provider != nil
 	s.cfgMu.Unlock()
 	if !ready {
-		writeErr(w, 503, "AI 조사에는 활성 LLM 연결이 필요합니다. 시스템 → LLM 설정을 확인해 주세요")
+		writeErr(w, 503, "AI research requires an active LLM connection. Check out the system → LLM settings.")
 		return
 	}
 	parent := s.ctx
@@ -168,7 +168,7 @@ func (s *Server) startInvestigationRun(w http.ResponseWriter, r *http.Request) {
 		parent = context.Background()
 	}
 	if parent.Err() != nil {
-		writeErr(w, 503, "서비스가 종료 중입니다")
+		writeErr(w, 503, "Service is closing")
 		return
 	}
 	// Resolve query scope before creating a paid model run. Credentials never
@@ -198,7 +198,7 @@ func (s *Server) startInvestigationRun(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		s.investigationMu.Unlock()
-		writeErr(w, 409, "다른 AI 조사가 진행 중입니다. 완료하거나 중지한 뒤 시작해 주세요")
+		writeErr(w, 409, "Another AI investigation is underway. Complete it or stop it and get started.")
 		return
 	}
 	run, created, err := s.m.pg.CreateInvestigationRun(r.Context(), base.FindingID, base.ID, options)
@@ -247,7 +247,7 @@ func (s *Server) investigationRunSource(ctx context.Context, base *db.FindingInv
 	// Old default-source records are compatible. Old custom selections need a
 	// new evidence collection because their authorization isn't separately stored.
 	if query != base.Collection.Query {
-		return nil, nil, fmt.Errorf("%w: 저장된 조회 범위가 달라졌습니다. Splunk 근거를 다시 수집해 주세요", db.ErrDefenseInvalid)
+		return nil, nil, fmt.Errorf("%w : The saved lookup range has changed. Please re-gather Splunk grounds", db.ErrDefenseInvalid)
 	}
 	return source, snapshot.InvestigationSourcetypes, nil
 }
@@ -262,13 +262,13 @@ func validateInvestigationPivot(base investigation.Scope, query agent.Investigat
 		return err
 	}
 	if query.Scope.Target != base.Target || query.Scope.Start.Before(base.Start) || query.Scope.End.After(base.End) {
-		return fmt.Errorf("조사 대상 또는 시간 범위를 넓힐 수 없습니다")
+		return fmt.Errorf("You can't expand the scope of your investigation or your time")
 	}
 	if base.PathPrefix != "" && base.PathPrefix != "/" && !investigation.MatchPath(query.Scope.PathPrefix, base.PathPrefix) {
-		return fmt.Errorf("조사 경로 범위를 넓힐 수 없습니다")
+		return fmt.Errorf("You can't expand the scope of your investigation path")
 	}
 	if !query.Remote || query.Offset != 0 {
-		return fmt.Errorf("원격 조회는 첫 페이지의 범위 제한 검색만 지원합니다")
+		return fmt.Errorf("Remote lookup only supports range-limit search on the first page")
 	}
 	return nil
 }
@@ -279,7 +279,7 @@ func (s *Server) executeInvestigationRun(ctx context.Context, cancel context.Can
 	started, err := s.m.pg.StartInvestigationRun(ctx, run.ID)
 	if err != nil {
 		finishCtx, done := context.WithTimeout(context.Background(), 10*time.Second)
-		_, finishErr := s.m.pg.FinishInvestigationRun(finishCtx, run.ID, "interrupted", json.RawMessage(`{}`), "조사 실행을 시작하지 못했습니다. 다시 실행해 주세요", db.InvestigationRunUsage{})
+		_, finishErr := s.m.pg.FinishInvestigationRun(finishCtx, run.ID, "interrupted", json.RawMessage(`{}`), "I didn't start the investigation. Please do it again.", db.InvestigationRunUsage{})
 		done()
 		if finishErr != nil {
 			log.Printf("[investigation] run %d start cleanup failed: %v", run.ID, finishErr)
@@ -299,7 +299,7 @@ func (s *Server) executeInvestigationRun(ctx context.Context, cancel context.Can
 			return err
 		}
 		if storedBytes+len(raw) > 20<<20 {
-			return fmt.Errorf("조사 증거 보존 한도에 도달했습니다")
+			return fmt.Errorf("We've reached the retention limit for investigative evidence.")
 		}
 		_, err = s.m.pg.AppendInvestigationRunEvent(ctx, run.ID, kind, raw, usage)
 		if err == nil {
@@ -348,7 +348,7 @@ func (s *Server) executeInvestigationRun(ctx context.Context, cancel context.Can
 			mu.Lock()
 			if persistErr != nil || remoteCalls >= 3 {
 				mu.Unlock()
-				return empty, fmt.Errorf("Splunk 후속 조회 한도에 도달했습니다")
+				return empty, fmt.Errorf("Splunk has reached the follow-up inquiry limit")
 			}
 			remoteCalls++
 			mu.Unlock()
@@ -397,28 +397,28 @@ func (s *Server) executeInvestigationRun(ctx context.Context, cancel context.Can
 	message := ""
 	if persistErr != nil && !errors.Is(persistErr, db.ErrInvestigationRunInactive) {
 		report.Status = "interrupted"
-		message = "조사 과정 저장에 실패하여 추가 조회와 모델 호출을 중단했습니다"
+		message = "Failed to save the investigation process, interrupting further lookup and model calls"
 	} else if runErr != nil && report.Status == "model_error" {
-		message = "LLM 호출을 완료하지 못했습니다. 저장된 진행 과정과 LLM 연결·한도를 확인해 주세요"
+		message = "I have not completed my LLM call. Please check the saved process and the LLM connection and limits."
 	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		report.Status = "budget_exhausted"
-		message = "조사 제한시간에 도달했습니다. 그전에 저장된 진행 과정과 근거를 확인하세요"
+		message = "We've reached a time limit for research. Check out the progress and the rationale that's been saved before."
 	}
 	if s.ctx != nil && s.ctx.Err() != nil {
 		report.Status = "interrupted"
-		message = "서비스 종료로 조사가 중단되었습니다. 저장된 근거를 확인한 뒤 새 실행을 시작하세요"
+		message = "The investigation has been suspended due to the end of service. After verifying the saved grounds, start a new execution"
 	}
 	raw, err := json.Marshal(report)
 	if err != nil {
 		raw = json.RawMessage(`{}`)
 		report.Status = "interrupted"
-		message = "조사 결과를 직렬화하지 못했습니다"
+		message = "Failed to serialize survey results"
 	}
 	finishCtx, done := context.WithTimeout(context.Background(), 10*time.Second)
 	_, err = s.m.pg.FinishInvestigationRun(finishCtx, run.ID, report.Status, raw, message, usage)
 	if err != nil { // Preserve a terminal state even when the final report is too large.
-		_, err = s.m.pg.FinishInvestigationRun(finishCtx, run.ID, "interrupted", json.RawMessage(`{"summary":"결과 저장 한도에 도달했습니다. 보존된 조사 과정과 근거를 확인하세요."}`), "최종 결과 저장 한도", usage)
+		_, err = s.m.pg.FinishInvestigationRun(finishCtx, run.ID, "interrupted", json.RawMessage("{\"summary\":\"결과 저장 한도에 도달했습니다. 보존된 조사 과정과 근거를 확인하세요.\"}"), "Final result storage limit", usage)
 	}
 	done()
 	mu.Unlock()

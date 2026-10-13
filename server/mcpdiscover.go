@@ -30,10 +30,10 @@ type mcpClient interface {
 // (stdio/http/sse)과 URL 은 와이어 식별자라 원문을 유지하고, UI mcpPage(전송 방식·명령·
 // 원격 URL)와 표기를 맞춘다.
 const (
-	errMCPStdioNoCommand      = "stdio 전송 방식에 명령이 없습니다"
-	errMCPHTTPNoURL           = "http 전송 방식에 URL 이 없습니다"
-	errMCPSSENoURL            = "sse 전송 방식에 URL 이 없습니다"
-	errMCPUnknownTransportFmt = "알 수 없는 전송 방식입니다: %q"
+	errMCPStdioNoCommand      = "There are no commands to send stdio"
+	errMCPHTTPNoURL           = "There is no URL for http transmission."
+	errMCPSSENoURL            = "There is no URL in the way sse is sent"
+	errMCPUnknownTransportFmt = "Unknown transmission method: %q"
 )
 
 // connectMCP dials one MCP server per its transport. Callers must Close the client.
@@ -79,7 +79,7 @@ func (s *Server) discoverAndCacheMCP(ctx context.Context, m *db.MCPServer) error
 	if err := s.m.pg.SaveMCPTools(m.ID, tools); err != nil {
 		return err
 	}
-	log.Printf("[mcp] %s 에서 도구 %d개를 발견해 캐시했습니다", m.Name, len(tools))
+	log.Printf("[mcp] discovered and cached %s tools: %d", m.Name, len(tools))
 	return nil
 }
 
@@ -90,7 +90,7 @@ func (s *Server) discoverAndCacheMCP(ctx context.Context, m *db.MCPServer) error
 func (s *Server) discoverEmptyMCPsOnStartup() {
 	servers, err := s.m.pg.ListMCP()
 	if err != nil {
-		log.Printf("[mcp] 시작 시 자동 발견: 목록을 읽지 못했습니다: %v", err)
+		log.Printf("[mcp] Auto-discovery at startup: Could not read list: %v", err)
 		return
 	}
 	for _, m := range servers {
@@ -99,7 +99,7 @@ func (s *Server) discoverEmptyMCPsOnStartup() {
 		}
 		ctx, cancel := context.WithTimeout(s.ctx, 90*time.Second)
 		if err := s.discoverAndCacheMCP(ctx, m); err != nil {
-			log.Printf("[mcp] 시작 시 %s 자동 발견에 실패했습니다: %v", m.Name, err)
+			log.Printf("[mcp] %s auto-discovery failed at startup: %v", m.Name, err)
 		}
 		cancel()
 	}

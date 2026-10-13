@@ -47,13 +47,13 @@ func SeverityRank(severity string) int { return severityRank[severity] }
 func SeverityLabel(severity string) string {
 	switch severity {
 	case "critical":
-		return "🔴 심각"
+		return "🔴 Critical"
 	case "high":
-		return "🟠 높음"
+		return "🟠 High"
 	case "medium":
-		return "🟡 중간"
+		return "🟡 Medium"
 	case "low":
-		return "🔵 낮음"
+		return "🔵 Low"
 	default:
 		return severity
 	}
@@ -63,23 +63,23 @@ func SeverityLabel(severity string) string {
 func StatusLabel(status string) string {
 	switch status {
 	case "pending":
-		return "처리 대기"
+		return "Pending"
 	case "in_progress":
-		return "처리 중"
+		return "In progress"
 	case "confirmed":
-		return "확인됨"
+		return "Confirmed"
 	case "resolved":
-		return "처리됨"
+		return "Resolved"
 	case "fixed":
-		return "수정됨"
+		return "Fixed"
 	case "false_positive":
-		return "오탐"
+		return "False positive"
 	case "ignored":
-		return "무시"
+		return "Ignored"
 	case "duplicate":
-		return "중복"
+		return "Duplicate"
 	case "risk_accepted":
-		return "위험 수용"
+		return "Risk accepted"
 	default:
 		return status
 	}

@@ -15,16 +15,16 @@ func TestManualTaskScopeSummaryLocalized(t *testing.T) {
 	if manualTaskScopeSummary == "" {
 		t.Fatal("manualTaskScopeSummary: 빈 문자열")
 	}
-	hasHangul := false
+	hasLatin := false
 	for _, r := range manualTaskScopeSummary {
 		if unicode.Is(unicode.Han, r) {
 			t.Fatalf("manualTaskScopeSummary: 중국어 한자가 남아 있습니다: %q", manualTaskScopeSummary)
 		}
-		if unicode.Is(unicode.Hangul, r) {
-			hasHangul = true
+		if unicode.Is(unicode.Latin, r) {
+			hasLatin = true
 		}
 	}
-	if !hasHangul {
+	if !hasLatin {
 		t.Fatalf("manualTaskScopeSummary: 한글이 없습니다: %q", manualTaskScopeSummary)
 	}
 }

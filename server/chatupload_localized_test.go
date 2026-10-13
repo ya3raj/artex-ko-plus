@@ -9,7 +9,7 @@ import (
 )
 
 // chatupload.go 의 채팅 첨부 업로드 API 에러 응답을 한국어로 유지하는 회귀 방어 테스트다.
-// 한국어 판정은 F3a 의 assertKoreanError(한글 포함·중국어 한자 0)를, 응답 본문 추출은
+// 한국어 판정은 F3a 의 assertEnglishError(한글 포함·중국어 한자 0)를, 응답 본문 추출은
 // task_categories 테스트의 decodeErrorField 를 재사용한다(같은 package server).
 
 // TestChatUploadErrorConstantsLocalized 는 응답 상수 7종이 전부 한국어임을 단언한다.
@@ -26,7 +26,7 @@ func TestChatUploadErrorConstantsLocalized(t *testing.T) {
 		"save_failed":   errChatUploadSaveFailed,
 	}
 	for label, msg := range cases {
-		assertKoreanError(t, label, msg)
+		assertEnglishError(t, label, msg)
 	}
 }
 
@@ -55,7 +55,7 @@ func TestChatUploadHandlerResponsesLocalized(t *testing.T) {
 		if got := decodeErrorField(t, rec.Body.Bytes()); got != errChatUploadScopeInvalid {
 			t.Fatalf("응답 문구 = %q, 기대 = %q", got, errChatUploadScopeInvalid)
 		}
-		assertKoreanError(t, "scope-invalid", errChatUploadScopeInvalid)
+		assertEnglishError(t, "scope-invalid", errChatUploadScopeInvalid)
 	})
 
 	t.Run("bad-id", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestChatUploadHandlerResponsesLocalized(t *testing.T) {
 		if got := decodeErrorField(t, rec.Body.Bytes()); got != errChatUploadBadID {
 			t.Fatalf("응답 문구 = %q, 기대 = %q", got, errChatUploadBadID)
 		}
-		assertKoreanError(t, "bad-id", errChatUploadBadID)
+		assertEnglishError(t, "bad-id", errChatUploadBadID)
 	})
 
 	t.Run("no-file", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestChatUploadHandlerResponsesLocalized(t *testing.T) {
 		if got := decodeErrorField(t, rec.Body.Bytes()); got != errChatUploadNoFile {
 			t.Fatalf("응답 문구 = %q, 기대 = %q", got, errChatUploadNoFile)
 		}
-		assertKoreanError(t, "no-file", errChatUploadNoFile)
+		assertEnglishError(t, "no-file", errChatUploadNoFile)
 	})
 
 	t.Run("task-deleting", func(t *testing.T) {
@@ -101,6 +101,6 @@ func TestChatUploadHandlerResponsesLocalized(t *testing.T) {
 		if got := decodeErrorField(t, rec.Body.Bytes()); got != errChatUploadTaskDeleting {
 			t.Fatalf("응답 문구 = %q, 기대 = %q", got, errChatUploadTaskDeleting)
 		}
-		assertKoreanError(t, "task-deleting", errChatUploadTaskDeleting)
+		assertEnglishError(t, "task-deleting", errChatUploadTaskDeleting)
 	})
 }

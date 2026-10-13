@@ -186,7 +186,7 @@ func TestInvestigatorSavesObservationBeforeNextPaidCallAndPreservesOnBudget(t *t
 		}
 	}
 	report, err := RunInvestigation(t.Context(), o)
-	if err == nil || report.Status != "budget_exhausted" || observedAtCall != 2 || len(report.Observations) != 1 || !strings.Contains(report.Summary, "관측 1건") {
+	if err == nil || report.Status != "budget_exhausted" || observedAtCall != 2 || len(report.Observations) != 1 || !strings.Contains(report.Summary, "1 observations") {
 		t.Fatalf("report=%+v err=%v at=%d", report, err, observedAtCall)
 	}
 }

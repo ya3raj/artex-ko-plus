@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	ErrDefenseConflict = errors.New("방어 계획 또는 원본 증거가 변경됐습니다. 새로고침 후 다시 저장해 주세요")
-	ErrDefenseInvalid  = errors.New("방어 검증 입력이 올바르지 않습니다")
+	ErrDefenseConflict = errors.New("The defense plan or original evidence has been changed. Please refresh and save it again.")
+	ErrDefenseInvalid  = errors.New("Defense verification input is invalid")
 )
 
 type DefensePlan struct {
@@ -77,25 +77,25 @@ type FindingDefense struct {
 func defenseText(value, field string, min, max int) (string, error) {
 	value = strings.TrimSpace(value)
 	if !utf8.ValidString(value) || strings.ContainsRune(value, 0) {
-		return "", fmt.Errorf("%w: %s에 올바른 텍스트를 입력해 주세요", ErrDefenseInvalid, field)
+		return "", fmt.Errorf("%w : Please enter the correct text in %s", ErrDefenseInvalid, field)
 	}
 	if n := utf8.RuneCountInString(value); n < min || n > max {
-		return "", fmt.Errorf("%w: %s는 %d~%d자로 입력해 주세요", ErrDefenseInvalid, field, min, max)
+		return "", fmt.Errorf("%w : %s is %d ~ %d", ErrDefenseInvalid, field, min, max)
 	}
 	return value, nil
 }
 
 func normalizeDefensePlan(in DefensePlanInput) (DefensePlanInput, error) {
 	if in.ExpectedRevision < 0 || (in.RuleFormat != "query" && in.RuleFormat != "sigma" && in.RuleFormat != "other" && in.RuleFormat != "event_filter") {
-		return in, fmt.Errorf("%w: 계획 버전 또는 규칙 형식을 확인해 주세요", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : Check the plan version or rule format", ErrDefenseInvalid)
 	}
 	fields := []struct {
 		value    *string
 		name     string
 		min, max int
 	}{
-		{&in.Hypothesis, "검증 가설", 1, 4000}, {&in.LogSource, "로그 소스", 0, 2000},
-		{&in.RuleText, "탐지 규칙", 0, 32000}, {&in.Remediation, "개선 조치", 0, 8000},
+		{&in.Hypothesis, "Test hypothesis", 1, 4000}, {&in.LogSource, "Log Source", 0, 2000},
+		{&in.RuleText, "Detection rule", 0, 32000}, {&in.Remediation, "Improvement measures", 0, 8000},
 	}
 	for _, f := range fields {
 		v, err := defenseText(*f.value, f.name, f.min, f.max)
@@ -109,28 +109,28 @@ func normalizeDefensePlan(in DefensePlanInput) (DefensePlanInput, error) {
 
 func normalizeDefenseValidation(in DefenseValidationInput, now time.Time) (DefenseValidationInput, error) {
 	if in.PlanRevision <= 0 || in.ExpectedEvidenceVersion == nil || *in.ExpectedEvidenceVersion < 0 {
-		return in, fmt.Errorf("%w: 계획 및 증거 버전을 확인해 주세요", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : Please check the plan and proof version", ErrDefenseInvalid)
 	}
 	if raw, err := hex.DecodeString(in.ExpectedSourceFingerprint); err != nil || len(raw) != 16 {
-		return in, fmt.Errorf("%w: 원본 증거 식별자를 확인해 주세요", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : Please check the original evidence identifier", ErrDefenseInvalid)
 	}
 	if in.Detection != "detected" && in.Detection != "missed" && in.Detection != "not_tested" {
-		return in, fmt.Errorf("%w: 탐지 결과를 선택해 주세요", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : Please select the detection result", ErrDefenseInvalid)
 	}
 	if in.Prevention != "blocked" && in.Prevention != "not_blocked" && in.Prevention != "not_tested" {
-		return in, fmt.Errorf("%w: 차단 결과를 선택해 주세요", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : Please select a blocking result", ErrDefenseInvalid)
 	}
 	if in.Detection == "not_tested" && in.Prevention == "not_tested" {
-		return in, fmt.Errorf("%w: 탐지 또는 차단 중 하나 이상의 관찰 결과가 필요합니다", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w One or more observation results are required during detection or blocking", ErrDefenseInvalid)
 	}
 	if in.ObservedAt.IsZero() || in.ObservedAt.Year() < 1970 || in.ObservedAt.After(now.Add(5*time.Minute)) {
-		return in, fmt.Errorf("%w: 관찰 시각은 1970년 이후여야 하며 현재보다 5분 넘게 미래일 수 없습니다", ErrDefenseInvalid)
+		return in, fmt.Errorf("%w : Observation time should be after the 1970s and cannot be more than five minutes into the future than it is now.", ErrDefenseInvalid)
 	}
 	var err error
-	if in.Evidence, err = defenseText(in.Evidence, "관찰 증거", 1, 32000); err != nil {
+	if in.Evidence, err = defenseText(in.Evidence, "Observational evidence", 1, 32000); err != nil {
 		return in, err
 	}
-	if in.Notes, err = defenseText(in.Notes, "메모", 0, 4000); err != nil {
+	if in.Notes, err = defenseText(in.Notes, "Memo", 0, 4000); err != nil {
 		return in, err
 	}
 	in.ObservedAt = in.ObservedAt.UTC()

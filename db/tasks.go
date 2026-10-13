@@ -261,19 +261,7 @@ func insertTaskCompanies(tx *sql.Tx, taskID int64, companyIDs []int64) error {
 		return err
 	}
 	var inserted int
-	err := tx.QueryRow(`
-WITH requested(company_id, position) AS (
-    SELECT company_id, position
-    FROM unnest($2::bigint[]) WITH ORDINALITY AS requested(company_id, position)
-), inserted AS (
-    INSERT INTO task_scope(task_id, kind, company_id, source, reason)
-    SELECT $1, 'company', companies.id, 'manual', '작업 생성 시 연결된 회사'
-    FROM requested
-    JOIN companies ON companies.id=requested.company_id
-    ORDER BY requested.position
-    RETURNING company_id
-)
-SELECT count(*) FROM inserted`, taskID, companyIDs).Scan(&inserted)
+	err := tx.QueryRow("\nWITH requested(company_id, position) AS (\n    SELECT company_id, position\n    FROM unnest($2::bigint[]) WITH ORDINALITY AS requested(company_id, position)\n), inserted AS (\n    INSERT INTO task_scope(task_id, kind, company_id, source, reason)\n    SELECT $1, 'company', companies.id, 'manual', 'Corporated at job creation'\n    FROM requested\n    JOIN companies ON companies.id=requested.company_id\n    ORDER BY requested.position\n    RETURNING company_id\n)\nSELECT count(*) FROM inserted", taskID, companyIDs).Scan(&inserted)
 	if err != nil {
 		return err
 	}

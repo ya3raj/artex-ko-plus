@@ -23,7 +23,7 @@ func (s *Server) registerSecuritySources(mux *http.ServeMux) {
 }
 func (s *Server) sourceCipher() (cipher.AEAD, error) {
 	if len(s.jwtKey) == 0 {
-		return nil, errors.New("연결 인증 정보 암호화 키가 없습니다")
+		return nil, errors.New("Connection authentication information encryption key is missing")
 	}
 	key := sha256.Sum256(append([]byte("artex-security-sources/v1\x00"), s.jwtKey...))
 	block, e := aes.NewCipher(key[:])
@@ -54,15 +54,15 @@ func (s *Server) securitySourceCredentials(source *db.SecuritySource) (securitys
 		return c, e
 	}
 	if len(source.SecretCipher) < a.NonceSize() {
-		return c, errors.New("저장된 인증 정보를 읽지 못했습니다. 다시 입력해 주세요")
+		return c, errors.New("I couldn't read the saved credentials. Please re-enter")
 	}
 	nonce := source.SecretCipher[:a.NonceSize()]
 	raw, e := a.Open(nil, nonce, source.SecretCipher[a.NonceSize():], []byte("security-source-credentials/v1"))
 	if e != nil {
-		return c, errors.New("저장된 인증 정보를 복호화하지 못했습니다. 다시 입력해 주세요")
+		return c, errors.New("I couldn't decrypt my saved authentication information. Please enter it again")
 	}
 	if json.Unmarshal(raw, &c) != nil {
-		return c, errors.New("연결 인증 정보 형식이 올바르지 않습니다")
+		return c, errors.New("Connection authentication information type is invalid")
 	}
 	return c, securitysource.ValidateCredentials(c)
 }
@@ -71,11 +71,11 @@ func sourceError(w http.ResponseWriter, e error) {
 	case errors.Is(e, securitysource.ErrInvalid), errors.Is(e, db.ErrDefenseInvalid):
 		writeErr(w, 400, e.Error())
 	case errors.Is(e, db.ErrDefenseConflict):
-		writeErr(w, 409, "연결 설정이 변경됐습니다. 새로고침 후 다시 저장해 주세요")
+		writeErr(w, 409, "The connection settings have changed. Please refresh and save again.")
 	case errors.Is(e, db.ErrSecuritySourceNotFound):
 		writeErr(w, 404, e.Error())
 	default:
-		writeErr(w, 500, "보안 로그 연결을 처리하지 못했습니다")
+		writeErr(w, 500, "Failed to handle secure log connection")
 	}
 }
 func (s *Server) listSecuritySources(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +109,7 @@ func (s *Server) saveSecuritySource(w http.ResponseWriter, r *http.Request) {
 		var ok bool
 		id, ok = pathInt(r, "sourceID")
 		if !ok || id <= 0 {
-			writeErr(w, 400, "연결 ID를 확인해 주세요")
+			writeErr(w, 400, "Please check the connection ID")
 			return
 		}
 	}
@@ -132,7 +132,7 @@ func (s *Server) saveSecuritySource(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if id == 0 && len(encrypted) == 0 {
-		writeErr(w, 400, "연결 인증 정보를 입력해 주세요")
+		writeErr(w, 400, "Please enter your connection credentials")
 		return
 	}
 	pg := s.pg(w)
@@ -147,7 +147,7 @@ func (s *Server) saveSecuritySource(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if old.Config.BaseURL != cfg.BaseURL {
-			writeErr(w, 400, "연결 주소를 변경할 때 인증 정보를 다시 입력해 주세요")
+			writeErr(w, 400, "Please re-enter your authentication information when changing your connection address")
 			return
 		}
 	}
@@ -166,7 +166,7 @@ func (s *Server) saveSecuritySource(w http.ResponseWriter, r *http.Request) {
 func (s *Server) testSecuritySource(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(r, "sourceID")
 	if !ok || id <= 0 {
-		writeErr(w, 400, "연결 ID를 확인해 주세요")
+		writeErr(w, 400, "Please check the connection ID")
 		return
 	}
 	pg := s.pg(w)
@@ -189,5 +189,5 @@ func (s *Server) testSecuritySource(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 502, e.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]any{"ok": true, "detail": "Splunk 관리 API 연결과 인증을 확인했습니다. 실제 로그·경보 조회는 진단 실행별로 검증합니다"})
+	writeJSON(w, 200, map[string]any{"ok": true, "detail": "Splunk Management Confirmed API connection and certification. Actual log and alert lookup is verified by diagnostic execution"})
 }

@@ -25,7 +25,7 @@ const MaxEvents = 1000
 const MaxBranches = 24
 const MaxConditions = 12
 
-var ErrInvalid = errors.New("Closed-loop 입력이 올바르지 않습니다")
+var ErrInvalid = errors.New("Closed-loop input is incorrect")
 
 // Only fields are searchable; labels and event identities never enter matching.
 type Event struct {
@@ -226,7 +226,7 @@ func validateTimestamp(value string) bool {
 
 func ParseDataset(raw string) (*Dataset, error) {
 	if !utf8.ValidString(raw) || len(raw) == 0 || len(raw) > MaxCombinedBytes {
-		return nil, invalid("로그는 비어 있지 않은 UTF-8 JSONL이며 2 MiB 이하여야 합니다")
+		return nil, invalid("The log is a non-empty UTF-8 JSONL and must be less than 2 MiB")
 	}
 	out := &Dataset{Events: []Event{}, Provenance: Provenance{SHA256: Hash([]byte(raw))}}
 	ids, contents := map[string]bool{}, map[string]bool{}
@@ -243,52 +243,52 @@ func ParseDataset(raw string) (*Dataset, error) {
 			continue
 		}
 		if len(out.Events) >= MaxEvents {
-			return nil, invalid("각 데이터셋은 최대 %d개 이벤트입니다", MaxEvents)
+			return nil, invalid("Each dataset is a maximum %d number of events.", MaxEvents)
 		}
 		var e Event
 		if err := strictDecode(b, &e); err != nil {
-			return nil, invalid("%d행 JSON 또는 필드를 확인하세요", line)
+			return nil, invalid("Check JSON or fields on line %d", line)
 		}
 		if e.EventID == "" || len(e.EventID) > 128 || strings.TrimSpace(e.EventID) != e.EventID {
-			return nil, invalid("%d행 event_id는 공백 없는 1~128바이트 식별자여야 합니다", line)
+			return nil, invalid("%d row event_id must be a 1 to 128-byte identifier without spaces", line)
 		}
 		if ids[e.EventID] {
-			return nil, invalid("중복 event_id: %s", e.EventID)
+			return nil, invalid("Duplicate event_id: %s", e.EventID)
 		}
 		ids[e.EventID] = true
 		if e.Label != "attack" && e.Label != "benign" {
-			return nil, invalid("%d행 label은 attack 또는 benign이어야 합니다", line)
+			return nil, invalid("%d The line label must be attack or benign", line)
 		}
 		if len(e.Fields) == 0 || len(e.Fields) > 64 {
-			return nil, invalid("%d행 fields는 1~64개 스칼라 필드여야 합니다", line)
+			return nil, invalid("Line %d: fields must contain 1–64 scalar fields", line)
 		}
 		for field, value := range e.Fields {
 			if len(field) == 0 || len(field) > 128 || strings.TrimSpace(field) != field || reservedField(field) {
-				return nil, invalid("%d행 필드 이름을 확인하세요", line)
+				return nil, invalid("%d Check the field name for the line", line)
 			}
 			text, ok := scalar(value)
 			if !ok || len(text) > 4096 {
-				return nil, invalid("%d행 %s 값은 4096바이트 이하 문자열·수·불리언이어야 합니다", line, field)
+				return nil, invalid("%d row %s value must be less than 4096 bytes string, number, and bullion", line, field)
 			}
 		}
 		if !validateTimestamp(e.OccurredAt) || !validateTimestamp(e.BaselineAlertAt) || !validateTimestamp(e.CandidateAlertAt) {
-			return nil, invalid("%d행 시간은 RFC3339 형식이어야 합니다", line)
+			return nil, invalid("%d The time in line must be in RFC3339 format", line)
 		}
 		for _, at := range []string{e.BaselineAlertAt, e.CandidateAlertAt} {
 			if at != "" {
 				if e.OccurredAt == "" {
-					return nil, invalid("%d행 경보 시간에는 occurred_at이 필요합니다", line)
+					return nil, invalid("%d line alarm time requires occurred_at", line)
 				}
 				start, _ := time.Parse(time.RFC3339Nano, e.OccurredAt)
 				end, _ := time.Parse(time.RFC3339Nano, at)
 				if end.Before(start) {
-					return nil, invalid("%d행 경보 시간은 공격 시간 이전일 수 없습니다", line)
+					return nil, invalid("%d The row alarm time cannot be before the attack time", line)
 				}
 			}
 		}
 		key := contentHash(e)
 		if contents[key] {
-			return nil, invalid("%d행은 동일 fields 내용을 가진 중복 이벤트입니다", line)
+			return nil, invalid("The %d line is a duplicate event with the same fields content.", line)
 		}
 		contents[key] = true
 		out.Events = append(out.Events, e)
@@ -299,10 +299,10 @@ func ParseDataset(raw string) (*Dataset, error) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, invalid("JSONL의 한 행은 64 KiB 이하여야 합니다")
+		return nil, invalid("One line of JSONL must be 64 KiB or less")
 	}
 	if len(out.Events) == 0 {
-		return nil, invalid("로그에 이벤트가 없습니다")
+		return nil, invalid("There are no events in the log")
 	}
 	out.Provenance.Events = len(out.Events)
 	return out, nil
@@ -320,24 +320,24 @@ func contentHash(e Event) string {
 }
 func ValidateRule(rule Rule) error {
 	if len(rule.Name) == 0 || utf8.RuneCountInString(rule.Name) > 120 {
-		return invalid("규칙 이름은 1~120자여야 합니다")
+		return invalid("The rule name must be 1 to 120 characters.")
 	}
 	if len(rule.Any) == 0 || len(rule.Any) > MaxBranches {
-		return invalid("규칙 any는 1~%d개 분기여야 합니다", MaxBranches)
+		return invalid("Rule any must be 1 to %d branch", MaxBranches)
 	}
 	for _, branch := range rule.Any {
 		if len(branch.All) == 0 || len(branch.All) > MaxConditions {
-			return invalid("all은 1~%d개 조건이어야 합니다", MaxConditions)
+			return invalid("All should be %d condition", MaxConditions)
 		}
 		for _, c := range branch.All {
 			if c.Field == "" || len(c.Field) > 128 || strings.TrimSpace(c.Field) != c.Field || reservedField(c.Field) {
-				return invalid("규칙은 fields 내부의 유효한 필드만 참조할 수 있습니다")
+				return invalid("Rules can only refer to valid fields inside fields")
 			}
 			if c.Op != "equals" && c.Op != "contains" {
-				return invalid("지원 연산자는 equals와 contains입니다")
+				return invalid("Support operators are equals and contains")
 			}
 			if c.Value == "" || len(c.Value) > 1024 {
-				return invalid("조건 값은 1~1024바이트여야 합니다")
+				return invalid("The condition value must be 1 to 1024 bytes")
 			}
 		}
 	}
@@ -452,10 +452,10 @@ func compare(events []Event, baseline, candidate Rule, confirmed bool) Compariso
 }
 func Evaluate(in Input) (*Result, error) {
 	if strings.TrimSpace(in.Scenario) == "" || utf8.RuneCountInString(in.Scenario) > 200 || utf8.RuneCountInString(in.Notes) > 4000 || in.FindingID < 0 || in.CaseID < 0 {
-		return nil, invalid("시나리오(1~200자), 메모(4000자 이하), 연결 ID를 확인하세요")
+		return nil, invalid("Check the scenario (1~200 characters), notes (4000 characters or less), and connection ID")
 	}
 	if len(in.TuningLogs)+len(in.EvaluationLogs) > MaxCombinedBytes {
-		return nil, invalid("두 데이터셋 합계는 2 MiB 이하여야 합니다")
+		return nil, invalid("The sum of the two datasets must be less than 2 MiB.")
 	}
 	if err := ValidateRule(in.BaselineRule); err != nil {
 		return nil, err
@@ -478,7 +478,7 @@ func Evaluate(in Input) (*Result, error) {
 	}
 	for _, event := range evaluation.Events {
 		if ids[event.EventID] || contents[contentHash(event)] {
-			return nil, invalid("개선용과 평가용 데이터가 겹칩니다: %s", event.EventID)
+			return nil, invalid("Data for improvement and evaluation is overlapping: %s", event.EventID)
 		}
 	}
 	out := &Result{Engine: EngineVersion, Scope: "offline_labeled_rule_evaluation", Tuning: tuning.Provenance, Evaluation: evaluation.Provenance, BaselineRuleSHA256: ruleHash(in.BaselineRule), CandidateRuleSHA256: ruleHash(in.CandidateRule), TuningComparison: compare(tuning.Events, in.BaselineRule, in.CandidateRule, in.TimestampProvenanceConfirmed), EvaluationComparison: compare(evaluation.Events, in.BaselineRule, in.CandidateRule, in.TimestampProvenanceConfirmed), Evidence: []Evidence{}, NextValidationPriorities: []Priority{}, Warnings: []string{"offline_only", "labels_supplied_by_uploader", "held_out_status_declared_by_uploader", "candidate_requires_independent_live_validation"}}

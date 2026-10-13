@@ -29,7 +29,7 @@ func liveCycleID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	w.Header().Set("Cache-Control", "no-store")
 	id, ok := pathInt(r, "id")
 	if !ok || id <= 0 {
-		writeErr(w, 400, "올바른 Closed-loop 실행 ID를 입력하세요")
+		writeErr(w, 400, "Enter the correct closed-loop execution ID")
 		return 0, false
 	}
 	return id, true
@@ -246,7 +246,7 @@ func (s *Server) collectClosedLoopLive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !complete {
-		writeErr(w, 409, "실제 실행 종료 후 60초의 관측 기간이 끝난 뒤 수집해 주세요")
+		writeErr(w, 409, "After the actual execution, after the sixty-second observation period, please collect it.")
 		return
 	}
 	scope := investigation.Scope{Target: c.LogTarget, PathPrefix: c.LogPath, Start: q.Start, End: q.End}
@@ -255,7 +255,7 @@ func (s *Server) collectClosedLoopLive(w http.ResponseWriter, r *http.Request) {
 	if execution.SourceKind == "file" {
 		native, err = pg.GetLatestClosedLoopNativeAssessment(r.Context(), c.FindingID, execution.ID)
 		if err != nil {
-			writeErr(w, 409, "이 실행의 감사·경보 파일을 먼저 업로드하세요")
+			writeErr(w, 409, "Upload the audit and alert file of this execution first")
 			return
 		}
 		var snapshot struct {
@@ -271,7 +271,7 @@ func (s *Server) collectClosedLoopLive(w http.ResponseWriter, r *http.Request) {
 		scope.Start, scope.End = q.Start, q.End
 		shadow, err = securitysource.EvaluateClosedLoopFile(securitysource.Config{CorrelationField: snapshot.Config.CorrelationField}, q, scope, c.LogMapping, c.BaselineRule, candidate, native.Evidence)
 		if shadow == nil {
-			writeErr(w, 400, "업로드 원본·실행 ID·필드 매핑을 확인하세요")
+			writeErr(w, 400, "Check the upload source, execution ID, and field mapping")
 			return
 		}
 	} else {
@@ -287,21 +287,21 @@ func (s *Server) collectClosedLoopLive(w http.ResponseWriter, r *http.Request) {
 		}
 		auth, authErr := s.securitySourceCredentials(source)
 		if authErr != nil {
-			writeErr(w, 409, "저장된 보안 로그 인증 정보를 확인하세요")
+			writeErr(w, 409, "Check the stored security log authentication information")
 			return
 		}
 		select {
 		case defenseCollectSlots <- struct{}{}:
 			defer func() { <-defenseCollectSlots }()
 		default:
-			writeErr(w, 429, "다른 증거 수집이 진행 중입니다. 잠시 후 다시 시도하세요")
+			writeErr(w, 429, "Another piece of evidence is in progress. Please try again in a moment.")
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 		defer cancel()
 		evidence, fetchErr := securitysource.Fetch(ctx, source.Config, auth, q)
 		if fetchErr != nil {
-			evidence = &securitysource.Evidence{Complete: false, CollectedAt: time.Now().UTC(), WindowStart: q.Start, WindowEnd: q.End, Warnings: []string{"실제 감사·경보 검색이 실패했습니다. 수집 근거가 부족합니다"}, Events: []securitysource.Event{}}
+			evidence = &securitysource.Evidence{Complete: false, CollectedAt: time.Now().UTC(), WindowStart: q.Start, WindowEnd: q.End, Warnings: []string{"The actual audit and warning search failed. There is insufficient collection basis"}, Events: []securitysource.Event{}}
 		}
 		native, err = pg.SaveDefenseAssessment(ctx, c.FindingID, execution.ID, evidence)
 		if err != nil {
@@ -310,7 +310,7 @@ func (s *Server) collectClosedLoopLive(w http.ResponseWriter, r *http.Request) {
 		}
 		shadow, err = securitysource.FetchClosedLoopRules(ctx, source.Config, auth, q, scope, c.LogMapping, c.BaselineRule, candidate)
 		if shadow == nil {
-			writeErr(w, 502, "구조화된 규칙 평가 검색을 시작하지 못했습니다. 원본 필드 매핑을 확인하세요")
+			writeErr(w, 502, "Structured rule evaluation search failed to start. Check source field mapping")
 			return
 		}
 	}

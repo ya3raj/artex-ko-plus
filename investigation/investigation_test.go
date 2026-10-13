@@ -33,7 +33,7 @@ func plan() Plan {
 	return BuildPlan(FindingContext{Name: "무인증 /ftp 디렉터리 리스팅 정보 노출"})
 }
 func TestPlanConditionalFamilies(t *testing.T) {
-	for _, tt := range []struct{ name, want string }{{"information source disclosure", "information_exposure"}, {"resource exposure", "information_exposure"}, {"RCE", "code_execution"}, {"SSRF", "ssrf"}, {"인증 우회", "authentication"}, {"unknown", "generic"}} {
+	for _, tt := range []struct{ name, want string }{{"information source disclosure", "information_exposure"}, {"resource exposure", "information_exposure"}, {"RCE", "code_execution"}, {"SSRF", "ssrf"}, {"authentication bypass", "authentication"}, {"unknown", "generic"}} {
 		p := BuildPlan(FindingContext{Name: tt.name})
 		if p.Family != tt.want {
 			t.Errorf("%s family=%s", tt.name, p.Family)
@@ -254,7 +254,7 @@ func TestSourceMetadataCollisionPreservesEvidenceWithoutJoiningOrigins(t *testin
 	}
 	warnings := 0
 	for _, warning := range c.Warnings {
-		if strings.Contains(warning, "서로 다른 출처") {
+		if strings.Contains(warning, "different source values") {
 			warnings++
 		}
 	}

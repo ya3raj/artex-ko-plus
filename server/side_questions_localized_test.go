@@ -4,10 +4,10 @@ import "testing"
 
 // TestSideQuestionAPIErrorsLocalized guards F21: every user-facing side-question
 // (곁질문) message surfaced by the HTTP wrapper (writeErr responses) and by the
-// exchange status (e.Error) must be Korean — Hangul present, no Chinese Han.
+// exchange status (e.Error) must be English — Latin present, no Chinese Han.
 // These reach the chat 곁질문 panel alongside the sidequestion package errors, so
 // both layers are localized together to avoid a mixed-language panel. Reuses
-// assertKoreanError (F3a).
+// assertEnglishError (F3a).
 func TestSideQuestionAPIErrorsLocalized(t *testing.T) {
 	for _, c := range []struct{ label, msg string }{
 		{"ctx_not_saved", sideErrCtxNotSaved},
@@ -23,6 +23,6 @@ func TestSideQuestionAPIErrorsLocalized(t *testing.T) {
 		{"answer_stopped", sideErrAnswerStopped},
 		{"answer_timeout", sideErrAnswerTimeout},
 	} {
-		assertKoreanError(t, c.label, c.msg)
+		assertEnglishError(t, c.label, c.msg)
 	}
 }

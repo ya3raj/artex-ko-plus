@@ -35,7 +35,7 @@ const instruction = "这是独立的旁路提问。主 Agent 正在执行原任�
 const DefaultOutputTokens = 8192
 const MaxRecentExchanges = 20
 
-var ErrContextBudget = errors.New("곁질문 컨텍스트를 압축해도 모델 예산을 초과합니다. 질문 범위를 좁히거나 모델 컨텍스트 설정을 조정해 주세요.")
+var ErrContextBudget = errors.New("Compressing the per-question context exceeds the model budget. Please narrow down your question or adjust the model context settings.")
 
 // EstimateInputTokens follows norma's byte-based block estimate with its 4/3
 // safety factor. Include system/schema and framing costs too; JSON characters

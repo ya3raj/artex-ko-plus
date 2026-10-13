@@ -13,7 +13,7 @@ import (
 )
 
 // task_control.go 의 작업·의도 제어 API 에러 응답을 한국어로 유지하는 회귀 방어 테스트다.
-// 한국어 판정은 F3a 의 assertKoreanError(한글 포함·중국어 한자 0)를, 응답 본문 추출은
+// 한국어 판정은 F3a 의 assertEnglishError(한글 포함·중국어 한자 0)를, 응답 본문 추출은
 // task_categories 테스트의 decodeErrorField 를 재사용한다(같은 package server).
 
 // TestTaskControlErrorConstantsLocalized 는 제어 응답 상수 10종이 전부 한국어임을
@@ -35,7 +35,7 @@ func TestTaskControlErrorConstantsLocalized(t *testing.T) {
 		"intent_reason_required": errIntentCtrlReasonRequired,
 	}
 	for label, msg := range cases {
-		assertKoreanError(t, label, msg)
+		assertEnglishError(t, label, msg)
 	}
 }
 
@@ -83,7 +83,7 @@ func TestTaskControlApplyResponsesLocalized(t *testing.T) {
 			if err.Error() != c.want {
 				t.Fatalf("반환 오류 = %q, 기대 = %q", err.Error(), c.want)
 			}
-			assertKoreanError(t, c.name, err.Error())
+			assertEnglishError(t, c.name, err.Error())
 		})
 	}
 }
@@ -111,7 +111,7 @@ func TestControlTasksBatchResponsesLocalized(t *testing.T) {
 		if !strings.Contains(got, "100") {
 			t.Fatalf("크기 상한 100 이 문구에 반영되지 않았습니다: %q", got)
 		}
-		assertKoreanError(t, "size-error", got)
+		assertEnglishError(t, "size-error", got)
 	})
 
 	t.Run("item-error-surfaces", func(t *testing.T) {
@@ -140,7 +140,7 @@ func TestControlTasksBatchResponsesLocalized(t *testing.T) {
 		if out.Items[0].OK || out.Items[0].Error != errTaskCtrlTerminalPause {
 			t.Fatalf("items[0] = %+v, error 기대 = %q", out.Items[0], errTaskCtrlTerminalPause)
 		}
-		assertKoreanError(t, "item-error", out.Items[0].Error)
+		assertEnglishError(t, "item-error", out.Items[0].Error)
 	})
 }
 
@@ -155,5 +155,5 @@ func TestIntentStateConflictWrapsSentinel(t *testing.T) {
 	if !strings.Contains(err.Error(), "paused") {
 		t.Fatalf("enum paused 가 문구에 보존되지 않았습니다: %q", err.Error())
 	}
-	assertKoreanError(t, "state-conflict", err.Error())
+	assertEnglishError(t, "state-conflict", err.Error())
 }

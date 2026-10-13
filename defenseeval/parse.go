@@ -10,7 +10,7 @@ import (
 
 func parseLogs(raw, label string, remaining int) ([]event, error) {
 	if !utf8.ValidString(raw) {
-		return nil, invalid("%s 로그는 올바른 UTF-8이어야 합니다", label)
+		return nil, invalid("%s log must be correct UTF-8", label)
 	}
 	out := []event{}
 	trimmed := strings.TrimSpace(raw)
@@ -21,32 +21,32 @@ func parseLogs(raw, label string, remaining int) ([]event, error) {
 		decoder := json.NewDecoder(strings.NewReader(raw))
 		decoder.UseNumber()
 		if _, err := decoder.Token(); err != nil {
-			return nil, invalid("%s 로그 배열을 읽을 수 없습니다", label)
+			return nil, invalid("%s Could not read log array", label)
 		}
 		for decoder.More() {
 			if len(out) >= remaining {
-				return nil, invalid("로그 이벤트 합계는 2000개 이하여야 합니다")
+				return nil, invalid("The total number of log events must be less than two thousand")
 			}
 			start := decoder.InputOffset()
 			count := 0
 			value, err := readValue(decoder, 0, &count)
 			if err != nil {
-				return nil, invalid("%s 로그 배열의 %d번째 이벤트: %s", label, len(out)+1, err)
+				return nil, invalid("%s %d event in the log array: %s", label, len(out)+1, err)
 			}
 			fields, ok := value.(map[string]any)
 			if !ok {
-				return nil, invalid("%s 로그의 각 이벤트는 JSON 객체여야 합니다", label)
+				return nil, invalid("Each event in %s log must be a JSON object", label)
 			}
 			if decoder.InputOffset()-start > MaxEventBytes {
-				return nil, invalid("이벤트 하나는 128 KiB 이하여야 합니다")
+				return nil, invalid("One event must be 128 KiB or less.")
 			}
 			out = append(out, event{line: len(out) + 1, fields: fields})
 		}
 		if close, err := decoder.Token(); err != nil || close != json.Delim(']') {
-			return nil, invalid("%s 로그 배열이 완전하지 않습니다", label)
+			return nil, invalid("%s The log array is not complete", label)
 		}
 		if err := requireEOF(decoder); err != nil {
-			return nil, invalid("%s 로그 배열 뒤에 다른 값이 있습니다", label)
+			return nil, invalid("Unexpected values after the %s log array", label)
 		}
 		return out, nil
 	}
@@ -55,14 +55,14 @@ func parseLogs(raw, label string, remaining int) ([]event, error) {
 			continue
 		}
 		if len(out) >= remaining {
-			return nil, invalid("로그 이벤트 합계는 2000개 이하여야 합니다")
+			return nil, invalid("The total number of log events must be less than two thousand")
 		}
 		if len(text) > MaxEventBytes {
-			return nil, invalid("%s 로그 %d행: 이벤트 하나는 128 KiB 이하여야 합니다", label, line+1)
+			return nil, invalid("%s log %d line: One event must be less than 128 KiB", label, line+1)
 		}
 		fields, err := parseObject(text)
 		if err != nil {
-			return nil, invalid("%s 로그 %d행: %s", label, line+1, err)
+			return nil, invalid("%s log %d row: %s", label, line+1, err)
 		}
 		out = append(out, event{line: line + 1, fields: fields})
 	}
@@ -71,7 +71,7 @@ func parseLogs(raw, label string, remaining int) ([]event, error) {
 
 func parseObject(raw string) (map[string]any, error) {
 	if !utf8.ValidString(raw) {
-		return nil, fmt.Errorf("올바른 UTF-8이 아닙니다")
+		return nil, fmt.Errorf("It's not the correct UTF-8.")
 	}
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	decoder.UseNumber()
@@ -82,7 +82,7 @@ func parseObject(raw string) (map[string]any, error) {
 	}
 	object, ok := value.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("JSON 객체가 필요합니다")
+		return nil, fmt.Errorf("Requires JSON object")
 	}
 	if err := requireEOF(decoder); err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func parseObject(raw string) (map[string]any, error) {
 
 func requireEOF(decoder *json.Decoder) error {
 	if _, err := decoder.Token(); err != io.EOF {
-		return fmt.Errorf("JSON 값 뒤에 추가 데이터가 있습니다")
+		return fmt.Errorf("There is additional data after the JSON value")
 	}
 	return nil
 }
@@ -101,15 +101,15 @@ func requireEOF(decoder *json.Decoder) error {
 // field override evidence, and bounds every event before evaluation.
 func readValue(decoder *json.Decoder, depth int, count *int) (any, error) {
 	if depth > MaxNestingDepth {
-		return nil, fmt.Errorf("JSON 중첩은 16단계 이하여야 합니다")
+		return nil, fmt.Errorf("JSON nesting should be less than sixteen steps")
 	}
 	*count = *count + 1
 	if *count > MaxEventValues {
-		return nil, fmt.Errorf("이벤트의 값은 4096개 이하여야 합니다")
+		return nil, fmt.Errorf("The value of the event must be less than 4096pcs")
 	}
 	token, err := decoder.Token()
 	if err != nil {
-		return nil, fmt.Errorf("JSON 문법이 올바르지 않습니다")
+		return nil, fmt.Errorf("JSON syntax is not correct")
 	}
 	switch token := token.(type) {
 	case json.Delim:
@@ -120,10 +120,10 @@ func readValue(decoder *json.Decoder, depth int, count *int) (any, error) {
 				keyToken, err := decoder.Token()
 				key, ok := keyToken.(string)
 				if err != nil || !ok || utf8.RuneCountInString(key) > MaxFieldLength {
-					return nil, fmt.Errorf("객체 필드 이름은 128자 이하여야 합니다")
+					return nil, fmt.Errorf("The object field name must be less than 128 characters")
 				}
 				if _, exists := object[key]; exists {
-					return nil, fmt.Errorf("중복된 JSON 필드 이름은 허용하지 않습니다")
+					return nil, fmt.Errorf("Duplicate JSON field names are not allowed")
 				}
 				value, err := readValue(decoder, depth+1, count)
 				if err != nil {
@@ -132,7 +132,7 @@ func readValue(decoder *json.Decoder, depth int, count *int) (any, error) {
 				object[key] = value
 			}
 			if close, err := decoder.Token(); err != nil || close != json.Delim('}') {
-				return nil, fmt.Errorf("JSON 객체가 완전하지 않습니다")
+				return nil, fmt.Errorf("JSON objects are not complete")
 			}
 			return object, nil
 		case '[':
@@ -145,20 +145,20 @@ func readValue(decoder *json.Decoder, depth int, count *int) (any, error) {
 				array = append(array, value)
 			}
 			if close, err := decoder.Token(); err != nil || close != json.Delim(']') {
-				return nil, fmt.Errorf("JSON 배열이 완전하지 않습니다")
+				return nil, fmt.Errorf("JSON array is not complete")
 			}
 			return array, nil
 		default:
-			return nil, fmt.Errorf("JSON 값이 올바르지 않습니다")
+			return nil, fmt.Errorf("JSON is not valid.")
 		}
 	case string:
 		if len(token) > MaxStringBytes {
-			return nil, fmt.Errorf("문자열 값은 64 KiB 이하여야 합니다")
+			return nil, fmt.Errorf("The string value must be less than 64 KiB")
 		}
 		return token, nil
 	case json.Number:
 		if len(token) > MaxNumberBytes {
-			return nil, fmt.Errorf("숫자 값은 256바이트 이하여야 합니다")
+			return nil, fmt.Errorf("The number value should be less than 256bytes.")
 		}
 		return token, nil
 	default:

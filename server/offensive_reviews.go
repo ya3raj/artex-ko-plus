@@ -52,7 +52,7 @@ func (s *Server) offensiveReviews() *offensiveReviewRuntime {
 func (s *Server) offensiveReviewRequest(w http.ResponseWriter, r *http.Request) (string, bool) {
 	offensiveHeaders(w)
 	if r.URL.RawQuery != "" {
-		writeErr(w, 400, "진단 API에는 추가 조회 조건을 전달할 수 없습니다")
+		writeErr(w, 400, "Diagnostic API cannot deliver additional query conditions")
 		return "", false
 	}
 	id, err := offensiveRunID(r)
@@ -61,7 +61,7 @@ func (s *Server) offensiveReviewRequest(w http.ResponseWriter, r *http.Request) 
 		return "", false
 	}
 	if s.m == nil || s.m.pg == nil {
-		writeErr(w, 503, "진단 검토 저장소가 준비되지 않았습니다")
+		writeErr(w, 503, "Diagnostic Review Store is not ready")
 		return "", false
 	}
 	return id, true
@@ -74,7 +74,7 @@ func (s *Server) getOffensiveCandidateReview(w http.ResponseWriter, r *http.Requ
 	}
 	review, err := s.m.pg.RecoverOffensiveReview(r.Context(), id)
 	if err != nil {
-		writeErr(w, 500, "저장된 후보 검토를 불러오지 못했습니다")
+		writeErr(w, 500, "Failed to load saved candidate review")
 		return
 	}
 	writeJSON(w, 200, map[string]any{"review": review})
@@ -97,14 +97,14 @@ func (s *Server) startOffensiveCandidateReview(w http.ResponseWriter, r *http.Re
 		req.BatchSize = 3
 	}
 	if req.ProfileID < 0 || req.BatchSize < 1 || req.BatchSize > 5 {
-		writeErr(w, 400, "검토 후보 수는 1~5개이며 LLM 설정 ID는 양수여야 합니다")
+		writeErr(w, 400, "There are 1 to 5 candidates for review and the LLM setting ID must be positive.")
 		return
 	}
 	rt := s.offensiveReviews()
 	// Fetch and verify frozen runner artifacts before creating/resuming a job.
 	prepared, err := rt.prepare(r.Context(), id)
 	if err != nil {
-		writeErr(w, 409, "진단 근거를 준비하지 못했습니다: "+err.Error())
+		writeErr(w, 409, "Failed to prepare diagnostic grounds: "+err.Error())
 		return
 	}
 	initial := &db.OffensiveReview{RunID: id, Kind: prepared.Kind, EvidenceSHA256: prepared.EvidenceSHA256, LegacyTaskID: prepared.LegacyTaskID, Status: "partial", Candidates: []db.OffensiveReviewCandidate{}}
@@ -122,20 +122,20 @@ func (s *Server) startOffensiveCandidateReview(w http.ResponseWriter, r *http.Re
 	initial.RefreshCounts()
 	if initial.Pending == 0 {
 		initial.Status = "completed"
-		initial.Reason = "모든 후보의 근거 판정을 저장했습니다."
+		initial.Reason = "Saved the evidence of all the candidates."
 	}
 	current, err := s.m.pg.EnsureOffensiveReview(r.Context(), initial)
 	if err != nil {
 		if errors.Is(err, db.ErrOffensiveReviewConflict) {
-			writeErr(w, 409, "저장된 진단 근거가 변경되었습니다. 새 도구 진단을 실행하세요")
+			writeErr(w, 409, "The stored diagnostic basis has changed. Run a new tool diagnostic")
 		} else {
-			writeErr(w, 500, "후보 검토 근거를 저장하지 못했습니다")
+			writeErr(w, 500, "Failed to save grounds for candidate review")
 		}
 		return
 	}
 	current, err = s.m.pg.RecoverOffensiveReview(r.Context(), id)
 	if err != nil {
-		writeErr(w, 500, "저장된 검토 상태를 복구하지 못했습니다")
+		writeErr(w, 500, "Failed to restore saved review status")
 		return
 	}
 	if current.Status == "running" || current.Status == "queued" || current.Pending == 0 {
@@ -151,7 +151,7 @@ func (s *Server) startOffensiveCandidateReview(w http.ResponseWriter, r *http.Re
 	}
 	provider, cfg, ok := rt.provider(req.ProfileID)
 	if !ok || provider == nil {
-		writeErr(w, 400, "사용할 수 있는 LLM 설정을 선택하세요")
+		writeErr(w, 400, "Choose the LLM settings you can use")
 		return
 	}
 	rt.mu.Lock()
@@ -162,7 +162,7 @@ func (s *Server) startOffensiveCandidateReview(w http.ResponseWriter, r *http.Re
 		if review.EvidenceSHA256 != prepared.EvidenceSHA256 || review.Status == "running" || review.Status == "queued" || review.Pending == 0 {
 			return db.ErrOffensiveReviewConflict
 		}
-		review.Status, review.Reason, review.ProfileID = "queued", "후보 검토 실행 순서를 기다리고 있습니다.", req.ProfileID
+		review.Status, review.Reason, review.ProfileID = "queued", "Candidate review execution order is waiting.", req.ProfileID
 		review.Owner, review.LeaseUntil = owner, now.Add(offensiveReviewLease)
 		review.Attempts = append(review.Attempts, db.OffensiveReviewAttempt{ID: attemptID, Status: "queued", BatchSize: req.BatchSize, ProfileID: req.ProfileID, QueuedAt: now})
 		return nil
@@ -173,7 +173,7 @@ func (s *Server) startOffensiveCandidateReview(w http.ResponseWriter, r *http.Re
 			current, _ = s.m.pg.GetOffensiveReview(r.Context(), id)
 			writeJSON(w, 200, map[string]any{"review": current})
 		} else {
-			writeErr(w, 500, "검토 실행을 저장하지 못했습니다")
+			writeErr(w, 500, "Failed to save review execution")
 		}
 		return
 	}
@@ -213,11 +213,11 @@ func (s *Server) cancelOffensiveCandidateReview(w http.ResponseWriter, r *http.R
 			return nil
 		}
 		now := time.Now().UTC()
-		db.InterruptOffensiveReview(review, now, "사용자가 중지했습니다. 완료된 후보는 유지됩니다. 중단된 호출의 토큰 사용량은 확인되지 않아 합계에 포함되지 않을 수 있습니다.")
+		db.InterruptOffensiveReview(review, now, "The user has stopped. The completed candidate will be retained. The token usage of the interrupted call will not be confirmed and may not be included in the sum.")
 		review.Status = "cancelled"
 		review.RefreshCounts()
 		if review.Pending == 0 {
-			review.Status, review.Reason = "completed", "모든 후보의 근거 판정을 저장했습니다."
+			review.Status, review.Reason = "completed", "Saved the evidence of all the candidates."
 		}
 		if len(review.Attempts) > 0 {
 			review.Attempts[len(review.Attempts)-1].Status = review.Status
@@ -226,11 +226,11 @@ func (s *Server) cancelOffensiveCandidateReview(w http.ResponseWriter, r *http.R
 		return nil
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		writeErr(w, 404, "저장된 검토가 없습니다")
+		writeErr(w, 404, "No saved review")
 		return
 	}
 	if err != nil {
-		writeErr(w, 500, "검토 중지를 저장하지 못했습니다")
+		writeErr(w, 500, "Failed to save review stop")
 		return
 	}
 	if job := rt.jobs[id]; job != nil {
@@ -297,13 +297,13 @@ func (s *Server) pumpOffensiveReviews(rt *offensiveReviewRuntime) {
 
 func (s *Server) runOffensiveReview(rt *offensiveReviewRuntime, job *offensiveReviewJob) {
 	if job.ctx.Err() != nil {
-		s.finishOffensiveReview(job, "interrupted", "검토 실행이 중단되었습니다. 남은 후보를 이어서 검토하세요.")
+		s.finishOffensiveReview(job, "interrupted", "Review has stopped. Review the remaining candidates.")
 		return
 	}
 	current, err := s.editOffensiveJob(job, func(r *db.OffensiveReview, a *db.OffensiveReviewAttempt) error {
 		job.startedAt = time.Now()
 		now := job.startedAt.UTC()
-		r.Status, r.Reason = "running", "선택된 후보를 순서대로 검토하고 판정을 즉시 저장합니다."
+		r.Status, r.Reason = "running", "Review the selected candidates in order and save the decision immediately."
 		a.Status, a.StartedAt = "running", &now
 		a.QueueWaitMS = max(0, now.Sub(a.QueuedAt).Milliseconds())
 		return nil
@@ -385,29 +385,29 @@ func (s *Server) runOffensiveReview(rt *offensiveReviewRuntime, job *offensiveRe
 			break
 		}
 	}
-	status, reason := "partial", "이번 묶음 검토를 종료했습니다. 남은 후보를 이어서 검토할 수 있습니다."
+	status, reason := "partial", "We have terminated this batch review. You can continue to review the remaining candidates."
 	if stoppedError != nil {
-		reason = offensiveReviewError(stoppedError) + " 추가 모델 호출 없이 이번 묶음을 종료했습니다."
+		reason = offensiveReviewError(stoppedError) + " We have ended this bundle without additional model calls."
 	}
 	if batchCtx.Err() != nil {
-		status, reason = "interrupted", "검토 실행이 중단되거나 제한시간에 도달했습니다. 완료된 판정은 보존됩니다."
+		status, reason = "interrupted", "The review execution has been stopped or the time limit has been reached. Completed decisions will be preserved."
 	}
 	s.finishOffensiveReview(job, status, reason)
 }
 
 func offensiveReviewError(err error) string {
 	if errors.Is(err, context.DeadlineExceeded) {
-		return "후보 검토 제한시간(최대 300초)에 도달했습니다. 이어하기로 이 후보를 다시 검토할 수 있습니다."
+		return "Candidate review timed out (maximum 300 seconds). You can retry this candidate."
 	}
 	if errors.Is(err, context.Canceled) {
-		return "검토가 중단되었습니다. 저장된 후보 판정은 유지됩니다."
+		return "The review has been discontinued. The saved candidate determination will be retained."
 	}
 	for _, safe := range []error{offensivereview.ErrInvalidCandidate, offensivereview.ErrNoProvider, offensivereview.ErrModelCall, offensivereview.ErrRateLimited, offensivereview.ErrInvalidOutput, offensivereview.ErrTruncatedOutput, offensivereview.ErrToolsNotAllowed} {
 		if errors.Is(err, safe) {
 			return safe.Error()
 		}
 	}
-	return "모델 호출 또는 근거 판정 형식 검증에 실패했습니다. LLM 연결 상태를 확인한 뒤 이어서 검토하세요."
+	return "Failed to validate model call or evidence determination format. Check the status of the LLM connection and review it."
 }
 
 func (s *Server) finishOffensiveReview(job *offensiveReviewJob, status, reason string) {
@@ -415,7 +415,7 @@ func (s *Server) finishOffensiveReview(job *offensiveReviewJob, status, reason s
 		now := time.Now().UTC()
 		r.RefreshCounts()
 		if r.Pending == 0 {
-			status, reason = "completed", "모든 후보의 근거 판정을 저장했습니다."
+			status, reason = "completed", "Saved the ground judgment of all the candidates."
 		}
 		r.Status, r.Reason, r.Owner, r.LeaseUntil = status, reason, "", time.Time{}
 		for i := range r.Candidates {

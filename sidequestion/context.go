@@ -17,15 +17,15 @@ import (
 // summaryInstruction prompt and the "[此前摘要]"/"[新材料片段]" framing below are
 // agent-brain text sent to the model, so they stay in their benchmarked Chinese.
 var (
-	errSideSummaryCallCap    = errors.New("곁질문 컨텍스트 정리가 이번 처리 상한에 도달했습니다. 질문 범위를 좁힌 뒤 다시 시도해 주세요.")
-	errSideSummaryIncomplete = errors.New("곁질문 요약이 완전히 생성되지 않았습니다. 다시 시도해 주세요.")
-	errSideSummaryOverBudget = errors.New("곁질문 요약이 예산 이내로 줄어들지 않았습니다. 다시 시도해 주세요.")
-	errSideHistoryCursor     = errors.New("곁질문 기록 커서가 유효하지 않습니다.")
-	errSideCompactionStalled = errors.New("곁질문 압축으로 컨텍스트를 더 줄이지 못해 재시도를 중단했습니다.")
+	errSideSummaryCallCap    = errors.New("The context of the next question has reached the end of the process. Please narrow down the question and try again.")
+	errSideSummaryIncomplete = errors.New("The next-question summary has not been created completely. Please try again.")
+	errSideSummaryOverBudget = errors.New("The summary of the next question has not been reduced to within the budget. Please try again.")
+	errSideHistoryCursor     = errors.New("The side question record cursor is not valid.")
+	errSideCompactionStalled = errors.New("I stopped retrying because I couldn't further reduce the context with compression.")
 )
 
 // sideSummaryFailedPrefix prefixes a wrapped summarizer failure (keeps %w).
-const sideSummaryFailedPrefix = "곁질문 요약에 실패했습니다"
+const sideSummaryFailedPrefix = "The summary of the side question failed."
 
 // Memory is independent of the main snapshot. Through is a persisted ordinal,
 // not an array offset; restart, pagination and failed requests cannot shift it.

@@ -3,7 +3,7 @@ package server
 import "testing"
 
 // triggers.go 의 트리거 설정 검증 오류 문구를 한국어로 유지하는 회귀 방어 테스트다.
-// 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를 재사용한다.
+// 한국어 판정은 F3a 가 만든 assertEnglishError(한글 포함·중국어 한자 0)를 재사용한다.
 
 // TestTriggerErrorConstantsLocalized 는 오류 상수 3종이 전부 한국어임을 단언한다.
 func TestTriggerErrorConstantsLocalized(t *testing.T) {
@@ -16,7 +16,7 @@ func TestTriggerErrorConstantsLocalized(t *testing.T) {
 		{"custom_only", errTriggerCustomOnly},
 	}
 	for _, c := range cases {
-		assertKoreanError(t, c.name, c.msg)
+		assertEnglishError(t, c.name, c.msg)
 	}
 }
 

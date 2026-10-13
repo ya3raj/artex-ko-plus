@@ -12,23 +12,23 @@ import (
 // F3b(update.go): 셀프 업데이트 엔드포인트의 사용자 노출 문구가 한국어인지 지키는 회귀 테스트.
 // 프런트엔드(system/settings 의 update-card)가 progress.message·reason·writeErr 본문을 그대로
 // 렌더하므로, 이 문구가 중국어로 되돌아가면 업데이트 화면에 중국어 토스트·진행 메시지가 다시 뜬다.
-// assertKoreanError·decodeErrorField 헬퍼는 선행 F3b 테스트 파일(같은 package server)에서 재사용한다.
+// assertEnglishError·decodeErrorField 헬퍼는 선행 F3b 테스트 파일(같은 package server)에서 재사용한다.
 
 func TestUpdateMessageConstantsLocalized(t *testing.T) {
-	assertKoreanError(t, "updateMsgPreparing", updateMsgPreparing)
-	assertKoreanError(t, "updateMsgFailed", updateMsgFailed)
-	assertKoreanError(t, "updateMsgStaged", updateMsgStaged)
-	assertKoreanError(t, "updateErrInProgress", updateErrInProgress)
-	assertKoreanError(t, "updateErrRollbackInProgress", updateErrRollbackInProgress)
+	assertEnglishError(t, "updateMsgPreparing", updateMsgPreparing)
+	assertEnglishError(t, "updateMsgFailed", updateMsgFailed)
+	assertEnglishError(t, "updateMsgStaged", updateMsgStaged)
+	assertEnglishError(t, "updateErrInProgress", updateErrInProgress)
+	assertEnglishError(t, "updateErrRollbackInProgress", updateErrRollbackInProgress)
 
 	// 형식 문자열 상수는 플레이스홀더를 채운 뒤 검사한다(%q/%s 가 치환되고 한자 0).
 	notRelease := fmt.Sprintf(updateErrNotReleaseFmt, "v0.0.0-dev")
-	assertKoreanError(t, "updateErrNotReleaseFmt", notRelease)
+	assertEnglishError(t, "updateErrNotReleaseFmt", notRelease)
 	if !strings.Contains(notRelease, "v0.0.0-dev") {
 		t.Fatalf("updateErrNotReleaseFmt: 버전 플레이스홀더가 치환되지 않았습니다: %q", notRelease)
 	}
 	latest := fmt.Sprintf(updateErrAlreadyLatestFmt, "v1.2.3")
-	assertKoreanError(t, "updateErrAlreadyLatestFmt", latest)
+	assertEnglishError(t, "updateErrAlreadyLatestFmt", latest)
 	if !strings.Contains(latest, "v1.2.3") {
 		t.Fatalf("updateErrAlreadyLatestFmt: 버전 플레이스홀더가 치환되지 않았습니다: %q", latest)
 	}
@@ -90,7 +90,7 @@ func TestUpdateRollbackInProgressLocalized(t *testing.T) {
 		t.Fatalf("상태 코드 409 기대, 실제 %d (본문 %s)", rec.Code, rec.Body.Bytes())
 	}
 	msg := decodeErrorField(t, rec.Body.Bytes())
-	assertKoreanError(t, "updateRollback 진행 중 409", msg)
+	assertEnglishError(t, "updateRollback 진행 중 409", msg)
 	if msg != updateErrRollbackInProgress {
 		t.Fatalf("롤백 거부 문구 불일치: %q", msg)
 	}

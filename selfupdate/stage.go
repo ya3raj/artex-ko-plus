@@ -59,17 +59,17 @@ func Stage(ctx context.Context, c *http.Client, rel *Release, currentVersion str
 	name := AssetName(rel.TagName, runtime.GOOS, runtime.GOARCH)
 	asset, ok := rel.FindAsset(name)
 	if !ok {
-		return fmt.Errorf("이 버전은 %s/%s 용 릴리스 패키지를 제공하지 않습니다(%s 누락)", runtime.GOOS, runtime.GOARCH, name)
+		return fmt.Errorf("This version has no release package for %s / %s (missing %s)", runtime.GOOS, runtime.GOARCH, name)
 	}
 
-	prog(PhaseDownload, 0, "체크섬 목록을 가져오는 중…")
+	prog(PhaseDownload, 0, "Getting a checksum list...")
 	sums, err := fetchSums(ctx, c, rel)
 	if err != nil {
 		return err
 	}
 	want, ok := sums[name]
 	if !ok {
-		return fmt.Errorf("%s 에 %s 항목이 없어 검증되지 않은 바이너리 설치를 거부합니다", sumsAsset, name)
+		return fmt.Errorf("%s has no %s entry; refusing to install an unverified binary", sumsAsset, name)
 	}
 
 	// 临时文件全部落在目标目录里，保证最后的 rename 是同一文件系统内的原子操作
@@ -81,37 +81,37 @@ func Stage(ctx context.Context, c *http.Client, rel *Release, currentVersion str
 		_ = os.Remove(binPath)
 	}()
 
-	prog(PhaseDownload, 0, fmt.Sprintf("%s 내려받는 중(%s)…", name, humanSize(asset.Size)))
+	prog(PhaseDownload, 0, fmt.Sprintf("%s Downloading(%s)...", name, humanSize(asset.Size)))
 	got, err := download(ctx, c, asset, zipPath, prog)
 	if err != nil {
 		return err
 	}
 
-	prog(PhaseVerify, -1, "SHA256 검증 중…")
+	prog(PhaseVerify, -1, "SHA256 is being tested.")
 	if !strings.EqualFold(got, want) {
-		return fmt.Errorf("SHA256 이 일치하지 않습니다: 기대값 %s, 실제값 %s(다운로드가 손상됐거나 변조됨)", short(want), short(got))
+		return fmt.Errorf("SHA256 does not match: Expected %s, Actual value %s (Downloads corrupted or tampered)", short(want), short(got))
 	}
 
-	prog(PhaseExtract, -1, "압축을 풀고 스모크 테스트 중…")
+	prog(PhaseExtract, -1, "Unpacking and testing a smoke...")
 	if err := extractBinary(zipPath, binPath); err != nil {
 		return err
 	}
 	if err := smokeTest(binPath); err != nil {
-		return fmt.Errorf("새 버전이 현재 시스템에서 실행되지 않습니다: %w", err)
+		return fmt.Errorf("The new version is not running on the current system: %w", err)
 	}
 
 	// 暂存件自己的 sha256 单独存一份：下次启动换装前还要再校验一次，
 	// 防止暂存后到重启前这段时间里文件被改动或写坏。
 	binSum, err := fileSHA256(binPath)
 	if err != nil {
-		return fmt.Errorf("새 바이너리 체크섬 계산 실패: %w", err)
+		return fmt.Errorf("Failed to calculate new binary checksum: %w", err)
 	}
 	if err := os.WriteFile(p.Sum, []byte(binSum), 0o644); err != nil {
-		return fmt.Errorf("체크섬 기록 실패: %w", err)
+		return fmt.Errorf("Checksum record failure: %w", err)
 	}
 	if err := os.Rename(binPath, p.New); err != nil {
 		_ = os.Remove(p.Sum)
-		return fmt.Errorf("새 버전 준비 실패: %w", err)
+		return fmt.Errorf("New version not ready: %w", err)
 	}
 
 	if err := writeMarker(p.Marker, marker{
@@ -120,10 +120,10 @@ func Stage(ctx context.Context, c *http.Client, rel *Release, currentVersion str
 		StagedAt: time.Now().Unix(),
 	}); err != nil {
 		// 标记只影响自动回滚能力，暂存件本身已就位，不因此中断升级。
-		prog(PhaseStaged, -1, "경고: 업데이트 표시 파일 기록에 실패해 이번 업데이트는 자동 롤백 보호를 받지 못합니다")
+		prog(PhaseStaged, -1, "Warning: Update display file history fails, this update does not receive automatic rollback protection")
 	}
 
-	prog(PhaseStaged, 100, "새 버전이 준비되었습니다. 재시작 중…")
+	prog(PhaseStaged, 100, "New version is now available. Restarting...")
 	return nil
 }
 
@@ -131,21 +131,21 @@ func Stage(ctx context.Context, c *http.Client, rel *Release, currentVersion str
 func fetchSums(ctx context.Context, c *http.Client, rel *Release) (map[string]string, error) {
 	asset, ok := rel.FindAsset(sumsAsset)
 	if !ok {
-		return nil, fmt.Errorf("이 릴리스에 %s 항목이 없어 무결성을 검증할 수 없으므로 업데이트를 거부합니다", sumsAsset)
+		return nil, fmt.Errorf("This release rejects updates because there is no %s entry to verify its integrity.", sumsAsset)
 	}
 	body, err := get(ctx, c, asset.URL)
 	if err != nil {
-		return nil, fmt.Errorf("%s 내려받기 실패: %w", sumsAsset, err)
+		return nil, fmt.Errorf("%s failed to download: %w", sumsAsset, err)
 	}
 	defer body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(body, 1<<20))
 	if err != nil {
-		return nil, fmt.Errorf("%s 읽기 실패: %w", sumsAsset, err)
+		return nil, fmt.Errorf("%s read failed: %w", sumsAsset, err)
 	}
 	out := parseSums(string(raw))
 	if len(out) == 0 {
-		return nil, fmt.Errorf("%s 내용이 비어 있거나 형식을 인식할 수 없습니다", sumsAsset)
+		return nil, fmt.Errorf("%s content is empty or unrecognizable format", sumsAsset)
 	}
 	return out, nil
 }
@@ -191,26 +191,26 @@ func isHexSHA256(s string) bool {
 func download(ctx context.Context, c *http.Client, a Asset, dst string, prog Progress) (string, error) {
 	body, err := get(ctx, c, a.URL)
 	if err != nil {
-		return "", fmt.Errorf("%s 내려받기 실패: %w", a.Name, err)
+		return "", fmt.Errorf("%s failed to download: %w", a.Name, err)
 	}
 	defer body.Close()
 
 	f, err := os.Create(dst)
 	if err != nil {
-		return "", fmt.Errorf("임시 파일 생성 실패: %w", err)
+		return "", fmt.Errorf("Temporary file creation failed: %w", err)
 	}
 	defer f.Close()
 
 	h := sha256.New()
 	pw := &progressWriter{total: a.Size, prog: prog, name: a.Name, last: time.Now()}
 	if _, err := io.Copy(io.MultiWriter(f, h, pw), body); err != nil {
-		return "", fmt.Errorf("다운로드가 중단되었습니다: %w", err)
+		return "", fmt.Errorf("Download has been discontinued: %w", err)
 	}
 	if err := f.Sync(); err != nil {
-		return "", fmt.Errorf("디스크 기록 실패: %w", err)
+		return "", fmt.Errorf("Disk recording failed: %w", err)
 	}
 	if a.Size > 0 && pw.written != a.Size {
-		return "", fmt.Errorf("다운로드가 완전하지 않습니다: 기대 %d바이트, 실제 %d바이트", a.Size, pw.written)
+		return "", fmt.Errorf("The download is not complete: expect %d bytes, real %d bytes", a.Size, pw.written)
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
@@ -247,7 +247,7 @@ func extractBinary(zipPath, dst string) error {
 	}
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
-		return fmt.Errorf("릴리스 패키지 열기 실패: %w", err)
+		return fmt.Errorf("Failed to open release package: %w", err)
 	}
 	defer zr.Close()
 
@@ -257,29 +257,29 @@ func extractBinary(zipPath, dst string) error {
 		}
 		rc, err := entry.Open()
 		if err != nil {
-			return fmt.Errorf("%s 읽기 실패: %w", entry.Name, err)
+			return fmt.Errorf("%s read failed: %w", entry.Name, err)
 		}
 		defer rc.Close()
 
 		f, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
 		if err != nil {
-			return fmt.Errorf("새 바이너리 쓰기 실패: %w", err)
+			return fmt.Errorf("New binary write failed: %w", err)
 		}
 		defer f.Close()
 
 		n, err := io.Copy(f, io.LimitReader(rc, maxBinarySize+1))
 		if err != nil {
-			return fmt.Errorf("%s 압축 해제 실패: %w", entry.Name, err)
+			return fmt.Errorf("%s decompression failed: %w", entry.Name, err)
 		}
 		if n > maxBinarySize {
-			return fmt.Errorf("릴리스 패키지 안의 실행 파일이 %s 보다 커서 압축 해제를 거부합니다", humanSize(maxBinarySize))
+			return fmt.Errorf("The executable file in the release package is larger than %s and refuses to decompress", humanSize(maxBinarySize))
 		}
 		if n == 0 {
-			return fmt.Errorf("릴리스 패키지 안의 %s 파일이 비어 있습니다", want)
+			return fmt.Errorf("The %s file in the release package is empty", want)
 		}
 		return f.Sync()
 	}
-	return fmt.Errorf("릴리스 패키지에서 %s 파일을 찾지 못했습니다", want)
+	return fmt.Errorf("Failed to find %s file in release package", want)
 }
 
 // checkWritable 提前确认目录可写。没有这一步，非 root 运行、或二进制被放在系统
@@ -287,7 +287,7 @@ func extractBinary(zipPath, dst string) error {
 func checkWritable(dir string) error {
 	probe, err := os.CreateTemp(dir, ".artex-update-probe-*")
 	if err != nil {
-		return fmt.Errorf("프로그램 디렉터리 %s 에 쓸 수 없어 자동 업데이트를 할 수 없습니다(권한을 확인하거나 수동 업데이트를 사용하세요): %w", dir, err)
+		return fmt.Errorf("Cannot update automatically because it cannot be written to the program directory %s (checking the authority or using manual updates): %w", dir, err)
 	}
 	name := probe.Name()
 	_ = probe.Close()
@@ -314,7 +314,7 @@ func (w *progressWriter) Write(b []byte) (int, error) {
 	if w.total > 0 {
 		pct = int(w.written * 100 / w.total)
 	}
-	w.prog(PhaseDownload, pct, fmt.Sprintf("내려받는 중 %s / %s", humanSize(w.written), humanSize(w.total)))
+	w.prog(PhaseDownload, pct, fmt.Sprintf("Downloading %s / %s", humanSize(w.written), humanSize(w.total)))
 	return len(b), nil
 }
 

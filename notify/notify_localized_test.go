@@ -16,23 +16,23 @@ func hasHan(s string) bool {
 	return false
 }
 
-// hasHangul 은 문자열에 한글 음절이 하나라도 있으면 true 를 반환한다.
-func hasHangul(s string) bool {
+// hasLatin 은 문자열에 한글 음절이 하나라도 있으면 true 를 반환한다.
+func hasLatin(s string) bool {
 	for _, r := range s {
-		if r >= 0xAC00 && r <= 0xD7A3 {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
 			return true
 		}
 	}
 	return false
 }
 
-// assertKorean 은 라벨이 한글을 포함하고 중국어 한자는 없음을 단언한다.
-func assertKorean(t *testing.T, where, got string) {
+// assertEnglish 은 라벨이 한글을 포함하고 중국어 한자는 없음을 단언한다.
+func assertEnglish(t *testing.T, where, got string) {
 	t.Helper()
 	if hasHan(got) {
 		t.Errorf("%s: 중국어 한자가 남아 있습니다: %q", where, got)
 	}
-	if !hasHangul(got) {
+	if !hasLatin(got) {
 		t.Errorf("%s: 한글이 없습니다: %q", where, got)
 	}
 }
@@ -43,14 +43,14 @@ func assertKorean(t *testing.T, where, got string) {
 func TestSeverityLabelLocalized(t *testing.T) {
 	// 중국어 라벨(严重/高危/中危/低危) → 한국어(심각/높음/중간/낮음), UI status.severity 정합.
 	want := map[string]string{
-		"critical": "심각",
-		"high":     "높음",
-		"medium":   "중간",
-		"low":      "낮음",
+		"critical": "Critical",
+		"high":     "High",
+		"medium":   "Medium",
+		"low":      "Low",
 	}
 	for sev, label := range want {
 		got := SeverityLabel(sev)
-		assertKorean(t, "SeverityLabel("+sev+")", got)
+		assertEnglish(t, "SeverityLabel("+sev+")", got)
 		if !strings.Contains(got, label) {
 			t.Errorf("SeverityLabel(%q)=%q, %q 를 포함해야 합니다", sev, got, label)
 		}
@@ -65,19 +65,19 @@ func TestSeverityLabelLocalized(t *testing.T) {
 // UI status.finding 네임스페이스(B4a)와 동일 표기여야 상태 변경 알림과 화면이 어긋나지 않는다.
 func TestStatusLabelLocalized(t *testing.T) {
 	want := map[string]string{
-		"pending":        "처리 대기",
-		"in_progress":    "처리 중",
-		"confirmed":      "확인됨",
-		"resolved":       "처리됨",
-		"fixed":          "수정됨",
-		"false_positive": "오탐",
-		"ignored":        "무시",
-		"duplicate":      "중복",
-		"risk_accepted":  "위험 수용",
+		"pending":        "Pending",
+		"in_progress":    "In progress",
+		"confirmed":      "Confirmed",
+		"resolved":       "Resolved",
+		"fixed":          "Fixed",
+		"false_positive": "False positive",
+		"ignored":        "Ignored",
+		"duplicate":      "Duplicate",
+		"risk_accepted":  "Risk accepted",
 	}
 	for status, label := range want {
 		got := StatusLabel(status)
-		assertKorean(t, "StatusLabel("+status+")", got)
+		assertEnglish(t, "StatusLabel("+status+")", got)
 		if got != label {
 			t.Errorf("StatusLabel(%q)=%q, %q 를 기대했습니다", status, got, label)
 		}
@@ -92,7 +92,7 @@ func TestStatusLabelLocalized(t *testing.T) {
 // 한국어 자리표시자(이름 없는 취약점)인지 검사한다. 절대 빈 제목을 내보내지 않는다.
 func TestItemTitlePlaceholderLocalized(t *testing.T) {
 	got := Item{}.Title()
-	assertKorean(t, "Item{}.Title()", got)
+	assertEnglish(t, "Item{}.Title()", got)
 	// 이름이 있으면 그 이름을, 유형만 있으면 유형을 우선한다(대체 로직 미회귀 확인).
 	if n := (Item{Name: "로그인 SQLi"}).Title(); n != "로그인 SQLi" {
 		t.Errorf("이름 우선 로직이 깨졌습니다, 받은 값 %q", n)
@@ -114,7 +114,7 @@ func TestAssetLineLocalized(t *testing.T) {
 	if hasHan(got) {
 		t.Errorf("자산 나열에 중국어 한자가 남았습니다: %q", got)
 	}
-	if !strings.Contains(got, "등 5개") {
+	if !strings.Contains(got, "5 total") {
 		t.Errorf("전체 개수 5 를 '등 5개'로 표기해야 합니다, 받은 값 %q", got)
 	}
 }

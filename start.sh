@@ -10,7 +10,7 @@
 #
 #   0      사용자가 정상 중지     → 루프 종료
 #   75     프로그램이 재시작 요청  → 즉시 다시 실행(화면에서 "원클릭 업데이트" 또는 "롤백"을 누름)
-#   그 외  비정상 종료          → 백오프 후 다시 실행(1→2→4…최대 60초)
+#   그 외  비Exited normally          → 백오프 후 다시 실행(1→2→4…최대 60초)
 #
 # 다운로드·SHA256 체크섬 검증·버전 교체는 일부러 여기서 하지 않습니다. 그 로직은 sh 와 bat 에 두 벌을 써야 하고,
 # 하필 가장 틀리면 안 되는 부분입니다. 실행되지 않는 바이너리로 한번 교체되면 이 스크립트는 그것을 충실히
@@ -21,7 +21,7 @@ set -u
 cd "$(dirname "$0")" || exit 1
 
 BIN=./artex
-[ -x "$BIN" ] || { echo "[artex] 실행 파일을 찾을 수 없습니다: $BIN" >&2; exit 1; }
+[ -x "$BIN" ] || { echo "[artex] Executable not found: $BIN" >&2; exit 1; }
 
 RESTART_CODE=75
 MAX_DELAY=60
@@ -58,22 +58,22 @@ while :; do
 	child=0
 
 	if [ "$stopping" -eq 1 ]; then
-		echo "[artex] 중지되었습니다"
+		echo "[artex] Stopped"
 		exit 0
 	fi
 
 	case "$code" in
 		0)
-			echo "[artex] 정상 종료"
+			echo "[artex] Exited normally"
 			exit 0
 			;;
 		"$RESTART_CODE")
 			# 업데이트/롤백이 준비되었습니다. 다시 실행하면 artex 가 기동 시 버전 교체를 완료합니다(selfupdate.Bootstrap 참조).
-			echo "[artex] 재시작 요청(새 버전 적용)…"
+			echo "[artex] Restart requested (applying new version)…"
 			delay=1
 			;;
 		*)
-			echo "[artex] 비정상 종료 (code=$code), ${delay}s 후 재시작" >&2
+			echo "[artex] 비Exited normally (code=$code), ${delay}s 후 재시작" >&2
 			sleep "$delay"
 			delay=$((delay * 2))
 			[ "$delay" -gt "$MAX_DELAY" ] && delay=$MAX_DELAY

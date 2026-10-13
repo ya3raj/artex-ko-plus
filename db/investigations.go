@@ -14,7 +14,7 @@ import (
 	"github.com/Autumn-27/artex/investigation"
 )
 
-var ErrInvestigationNotFound = errors.New("침해 조사 기록을 찾을 수 없습니다")
+var ErrInvestigationNotFound = errors.New("Infringement investigation records not found")
 
 // Historical investigations never depend on a newly generated retest UUID.
 // Each saved record is an immutable snapshot; new evidence creates a new record.
@@ -180,10 +180,10 @@ func (d *DB) KnownInvestigationVerifications(ctx context.Context, findingID int6
 
 func (d *DB) SaveFindingInvestigation(ctx context.Context, findingID int64, in FindingInvestigation) (*FindingInvestigation, error) {
 	var err error
-	if in.Title, err = defenseText(in.Title, "조사 제목", 1, 200); err != nil {
+	if in.Title, err = defenseText(in.Title, "Investigative Title", 1, 200); err != nil {
 		return nil, err
 	}
-	if in.Question, err = defenseText(in.Question, "조사 질문", 0, 4000); err != nil {
+	if in.Question, err = defenseText(in.Question, "Investigative Questions", 0, 4000); err != nil {
 		return nil, err
 	}
 	if in.SourceKind != "file" && in.SourceKind != "splunk" {
@@ -235,7 +235,7 @@ func (d *DB) SaveFindingInvestigation(ctx context.Context, findingID int64, in F
 		return nil, err
 	}
 	if len(raw) > 32<<20 {
-		return nil, fmt.Errorf("%w: 조사 기록이 너무 큽니다", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w: The investigation record is too large", ErrDefenseInvalid)
 	}
 	if err = tx.QueryRowContext(ctx, `INSERT INTO finding_investigations(finding_id,evidence_version,source_fingerprint,payload) VALUES($1,$2,$3,$4) RETURNING id,created_at`, findingID, in.EvidenceVersion, in.SourceFingerprint, raw).Scan(&in.ID, &in.CreatedAt); err != nil {
 		return nil, err

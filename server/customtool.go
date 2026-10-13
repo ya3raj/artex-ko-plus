@@ -46,14 +46,14 @@ var reToolKey = reAgentKey // 同 agent key 规则:小写字母开头 + 小写�
 // 오류 응답을 한국어로 고정한다. 에이전트가 읽는 도구 실행 결과(actool.Errorf)와 도구
 // 스키마 description 은 두뇌 경계라 중국어 원문을 보존한다(BRIEF 성능 보존 방침).
 const (
-	errCustomToolKeyFormat          = "key는 소문자로 시작하고 소문자·숫자·밑줄만 사용할 수 있습니다"
-	errCustomToolKindInvalid        = "kind 값은 command, script, http, shell 중 하나여야 합니다"
-	errCustomToolHTTPSchemaRequired = "http 도구에는 매개변수 JSON Schema를 반드시 지정해야 합니다(비워 둘 수 없습니다)"
-	errCustomToolKeyExists          = "이미 존재하는 key입니다(내장 또는 사용자 지정 도구)"
-	errCustomToolEditCustomOnly     = "사용자 지정 도구만 편집할 수 있습니다"
-	errCustomToolBadBody            = "요청 본문이 올바르지 않습니다"
-	errCustomToolShellNoExec        = "shell 유형 도구는 bash 환경 선언이므로 실행할 내용이 없습니다"
-	errCustomToolUnknownKindPrefix  = "알 수 없는 도구 유형입니다: "
+	errCustomToolKeyFormat          = "The key starts with lowercase characters and can only be used in lowercase, numbers, and underspinned"
+	errCustomToolKindInvalid        = "The kind value must be either command, script, http, shell."
+	errCustomToolHTTPSchemaRequired = "The http tool must specify the parameter JSON Schema (not to be left empty)"
+	errCustomToolKeyExists          = "It is a key that already exists (Bactar or Custom Tools)"
+	errCustomToolEditCustomOnly     = "You can edit only custom tools"
+	errCustomToolBadBody            = "The request body is not valid"
+	errCustomToolShellNoExec        = "The shell type tool is a bash environment declaration, so there is nothing to execute"
+	errCustomToolUnknownKindPrefix  = "Unknown type of tool: "
 )
 
 func (s *Server) pgCreateCustomTool(w http.ResponseWriter, r *http.Request) {
@@ -223,7 +223,7 @@ func (s *Server) seedPythonInterpreter() {
 	}
 	if p := detectPython(); p != "" {
 		_ = s.m.pg.SetSetting(settingPythonInterp, p)
-		log.Printf("[custom-tool] python 인터프리터 자동 감지: %s", p)
+		log.Printf("[custom-tool] python interpreter auto-detection: %s", p)
 	}
 }
 
@@ -335,7 +335,7 @@ func ensureSchema(raw json.RawMessage) map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"args": map[string]any{"type": "string", "description": "命令/参数(自由文本)"},
+			"args": map[string]any{"type": "string", "description": "Commands/Parameters (Free Text)"},
 		},
 	}
 }
@@ -346,7 +346,7 @@ func (s *Server) runCommandTool(ctx context.Context, execRaw json.RawMessage, pa
 	var spec commandExec
 	_ = json.Unmarshal(execRaw, &spec)
 	if strings.TrimSpace(spec.Command) == "" {
-		return actool.Errorf("command 为空"), nil
+		return actool.Errorf("Command is empty."), nil
 	}
 	cmd := renderTemplate(spec.Command, params, shellQuote)
 	// 复用 Bash 也在用的底层 run(经 Bash CoreTool.Call):自动继承安全 floor/超时/
@@ -366,11 +366,11 @@ func (s *Server) runScriptTool(ctx context.Context, key string, execRaw json.Raw
 	var spec scriptExec
 	_ = json.Unmarshal(execRaw, &spec)
 	if strings.TrimSpace(spec.Code) == "" {
-		return actool.Errorf("script code 为空"), nil
+		return actool.Errorf("The script code is empty."), nil
 	}
 	interp := s.pythonInterpreter()
 	if interp == "" {
-		return actool.Errorf("未配置且未检测到 python 解释器(在系统配置里设置)"), nil
+		return actool.Errorf("Unconfigured and undetected python interpreter (set in system configuration)"), nil
 	}
 	workDir := s.m.dir
 	var sessionEnv []string
@@ -422,7 +422,7 @@ func execPython(ctx context.Context, interp, key, code string, params map[string
 	out, err := c.CombinedOutput()
 	body := string(out)
 	if runCtx.Err() == context.DeadlineExceeded {
-		body += "\n... [超时终止] ..."
+		body += "\n[End of time] ..."
 	} else if err != nil {
 		body += "\n[exit: " + err.Error() + "]"
 	}
@@ -440,7 +440,7 @@ func (s *Server) runHTTPTool(ctx context.Context, execRaw json.RawMessage, param
 	}
 	rawURL := renderTemplate(spec.URL, params, identity)
 	if strings.TrimSpace(rawURL) == "" {
-		return actool.Errorf("http url 为空"), nil
+		return actool.Errorf("HTTP URL is empty."), nil
 	}
 	var bodyReader io.Reader
 	if spec.Body != "" {

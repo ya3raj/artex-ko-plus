@@ -21,6 +21,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.local
+      args:
+        NEXT_PUBLIC_LOCALE: ${NEXT_PUBLIC_LOCALE:-en}
     init: true
     depends_on:
       postgres:

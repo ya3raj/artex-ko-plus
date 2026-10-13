@@ -12,7 +12,7 @@ import (
 	"github.com/Autumn-27/artex/closedloop"
 )
 
-var ErrClosedLoopNotFound = errors.New("Closed-loop 반복 기록을 찾을 수 없습니다")
+var ErrClosedLoopNotFound = errors.New("Closed-loop loop record not found")
 
 type ClosedLoopIteration struct {
 	ID              int64              `json:"id,string"`
@@ -53,7 +53,7 @@ func (d *DB) SaveClosedLoopIteration(ctx context.Context, in closedloop.Input) (
 		var snapshot []byte
 		err = tx.QueryRowContext(ctx, `SELECT jsonb_build_object('id',f.id::text,'name',f.name,'vuln_class',f.vulnclass,'severity',f.severity,'summary',f.summary,'evidence',f.evidence,'evidence_version',f.evidence_version) FROM findings f WHERE f.id=$1 FOR SHARE`, in.FindingID).Scan(&snapshot)
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("%w: 연결할 취약점을 찾을 수 없습니다", closedloop.ErrInvalid)
+			return nil, fmt.Errorf("%w: Vulnerability not found to connect", closedloop.ErrInvalid)
 		}
 		if err != nil {
 			return nil, err
@@ -64,7 +64,7 @@ func (d *DB) SaveClosedLoopIteration(ctx context.Context, in closedloop.Input) (
 		var snapshot []byte
 		err = tx.QueryRowContext(ctx, `SELECT payload FROM defensive_cases WHERE id=$1 FOR SHARE`, in.CaseID).Scan(&snapshot)
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("%w: 연결할 방어 사건을 찾을 수 없습니다", closedloop.ErrInvalid)
+			return nil, fmt.Errorf("%w: Cannot find a defense case to connect", closedloop.ErrInvalid)
 		}
 		if err != nil {
 			return nil, err
@@ -96,7 +96,7 @@ func (d *DB) SaveClosedLoopIteration(ctx context.Context, in closedloop.Input) (
 }
 func (d *DB) ListClosedLoopIterations(ctx context.Context, limit int) ([]ClosedLoopSummary, error) {
 	if limit < 1 || limit > 100 {
-		return nil, fmt.Errorf("%w: 표시 개수는 1~100이어야 합니다", closedloop.ErrInvalid)
+		return nil, fmt.Errorf("%w : The number of marks should be 1~100", closedloop.ErrInvalid)
 	}
 	rows, err := d.QueryContext(ctx, `SELECT id,scenario,COALESCE(finding_id,0),COALESCE(case_id,0),payload#>'{result,evaluation_comparison}',payload#>'{result,evaluation}',created_at FROM closed_loop_iterations ORDER BY id DESC LIMIT $1`, limit)
 	if err != nil {

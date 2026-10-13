@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ErrInvestigationRunNotFound = errors.New("침해 조사 실행을 찾을 수 없습니다")
-	ErrInvestigationRunInactive = errors.New("침해 조사 실행이 종료되었거나 아직 시작되지 않았습니다")
+	ErrInvestigationRunNotFound = errors.New("Cannot find execution of breach investigation")
+	ErrInvestigationRunInactive = errors.New("The breach investigation has been completed or has not yet begun.")
 )
 
 // Runs refer to immutable, locally collected evidence. They never rewrite the
@@ -89,7 +89,7 @@ func investigationRunObject(raw json.RawMessage, maxBytes int) (json.RawMessage,
 	}
 	var object map[string]json.RawMessage
 	if len(raw) > maxBytes || json.Unmarshal(raw, &object) != nil || object == nil {
-		return nil, fmt.Errorf("%w: 조사 실행 데이터는 크기 제한 안의 JSON 객체여야 합니다", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : The survey execution data must be a JSON object within the size limit", ErrDefenseInvalid)
 	}
 	return raw, nil
 }
@@ -195,7 +195,7 @@ func (d *DB) AppendInvestigationRunEvent(ctx context.Context, id int64, kind str
 		return nil, ErrInvestigationRunInactive
 	}
 	if !usage.contains(previous) {
-		return nil, fmt.Errorf("%w: 조사 실행 사용량은 감소할 수 없습니다", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Survey execution usage cannot be reduced", ErrDefenseInvalid)
 	}
 	out := &InvestigationRunEvent{Sequence: count + 1, Kind: kind, Payload: payload}
 	if err = tx.QueryRowContext(ctx, `SELECT clock_timestamp()`).Scan(&out.CreatedAt); err != nil {
@@ -206,7 +206,7 @@ func (d *DB) AppendInvestigationRunEvent(ctx context.Context, id int64, kind str
 		return nil, err
 	}
 	if count >= 256 || size+len(raw) > 24<<20 {
-		return nil, fmt.Errorf("%w: 조사 실행 기록 저장 한도에 도달했습니다", ErrDefenseInvalid)
+		return nil, fmt.Errorf("%w : Survey execution record storage limit has been reached", ErrDefenseInvalid)
 	}
 	_, err = tx.ExecContext(ctx, `UPDATE finding_investigation_runs SET events=events || $2::jsonb,rounds=$3,tool_calls=$4,input_tokens=$5,output_tokens=$6,updated_at=$7,model_calls=$8,queries=$9 WHERE id=$1`, id, raw, usage.Rounds, usage.ToolCalls, usage.InputTokens, usage.OutputTokens, out.CreatedAt, usage.ModelCalls, usage.Queries)
 	if err != nil {
@@ -225,7 +225,7 @@ func (d *DB) FinishInvestigationRun(ctx context.Context, id int64, status string
 	if err != nil {
 		return false, err
 	}
-	if errorMessage, err = defenseText(errorMessage, "조사 실행 오류", 0, 8000); err != nil {
+	if errorMessage, err = defenseText(errorMessage, "Investigation execution error", 0, 8000); err != nil {
 		return false, err
 	}
 	tx, err := d.BeginTx(ctx, nil)
@@ -248,7 +248,7 @@ func (d *DB) FinishInvestigationRun(ctx context.Context, id int64, status string
 		return false, nil
 	}
 	if !usage.contains(previous) || size+len(result) > 24<<20 {
-		return false, fmt.Errorf("%w: 조사 실행 사용량 또는 저장 한도를 확인해 주세요", ErrDefenseInvalid)
+		return false, fmt.Errorf("%w : Check the survey execution usage or storage limit", ErrDefenseInvalid)
 	}
 	_, err = tx.ExecContext(ctx, `UPDATE finding_investigation_runs SET status=$2,result=$3,error=$4,rounds=$5,tool_calls=$6,input_tokens=$7,output_tokens=$8,model_calls=$9,queries=$10,finished_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$1`, id, status, result, errorMessage, usage.Rounds, usage.ToolCalls, usage.InputTokens, usage.OutputTokens, usage.ModelCalls, usage.Queries)
 	if err != nil {

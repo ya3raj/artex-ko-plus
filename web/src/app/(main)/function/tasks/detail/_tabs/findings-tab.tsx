@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/config";
+
 import * as React from "react";
 
 import Link from "next/link";
@@ -110,7 +112,7 @@ function Row({
           <StatusBadge domain="finding" value={f.status} dot />
         )}
         <span className="hidden shrink-0 text-xs text-muted-foreground md:block">
-          {new Date(f.ts).toLocaleString("ko-KR")}
+          {new Date(f.ts).toLocaleString(resolveLocale())}
         </span>
         {f.finding_id && (
           <Link

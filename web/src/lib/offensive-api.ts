@@ -185,12 +185,12 @@ async function uploadTarget(input: {
     localStorage.removeItem("artex_token");
     document.cookie = "artex_token=; path=/; max-age=0";
     window.location.href = "/login";
-    throw new Error("인증되지 않았습니다");
+    throw new Error("Not authenticated");
   }
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { error?: unknown };
     throw new HttpError(
-      typeof payload.error === "string" ? payload.error : `대상 등록 실패 (${response.status})`,
+      typeof payload.error === "string" ? payload.error : `Target Registration Failed (${response.status})`,
       response.status,
     );
   }

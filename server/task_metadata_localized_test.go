@@ -10,7 +10,7 @@ import (
 )
 
 // task_metadata.go 의 작업 메타데이터 수정 API 에러 응답을 한국어로 유지하는 회귀 방어
-// 테스트다. 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를 재사용한다.
+// 테스트다. 한국어 판정은 F3a 가 만든 assertEnglishError(한글 포함·중국어 한자 0)를 재사용한다.
 
 // TestTaskMetadataErrorConstantsLocalized 는 응답 상수 4종이 전부 한국어임을 단언한다.
 // 어느 하나라도 중국어로 되돌리면 이 테스트가 실패한다.
@@ -22,7 +22,7 @@ func TestTaskMetadataErrorConstantsLocalized(t *testing.T) {
 		"errTaskMetaNameTooLongFmt":  fmt.Sprintf(errTaskMetaNameTooLongFmt, maxTaskNameRunes),
 	}
 	for label, msg := range cases {
-		assertKoreanError(t, label, msg)
+		assertEnglishError(t, label, msg)
 	}
 }
 
@@ -73,7 +73,7 @@ func TestUpdateTaskMetadataResponsesLocalized(t *testing.T) {
 			if got := errBody(t, rec); got != c.want {
 				t.Fatalf("응답 문구 = %q, 기대 = %q", got, c.want)
 			}
-			assertKoreanError(t, c.name, errBody(t, rec))
+			assertEnglishError(t, c.name, errBody(t, rec))
 		})
 	}
 }

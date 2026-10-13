@@ -270,7 +270,7 @@ func TestDefensiveCaseMarkersGlobalWindowAndUntrustedValues(t *testing.T) {
 	if !c.Events[0].KnownARTEX || c.Events[1].KnownARTEX || c.Events[2].KnownARTEX || c.Stats.KnownARTEX != 1 || c.Stats.UnrecognizedMarkers != 2 {
 		t.Fatal("global marker classification ignored actual evidence window")
 	}
-	if len(c.Warnings) != 1 || !strings.Contains(c.Warnings[0], "전체 등록") || strings.Contains(c.Warnings[0], "같은 취약점") {
+	if len(c.Warnings) != 1 || !strings.Contains(c.Warnings[0], "full registration") || strings.Contains(c.Warnings[0], "same vulnerability") {
 		t.Fatal("standalone case misleadingly scoped marker to a finding")
 	}
 }
