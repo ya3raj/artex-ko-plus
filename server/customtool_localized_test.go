@@ -11,7 +11,7 @@ import (
 
 // customtool.go 의 사용자 지정 도구 CRUD·시험 실행 엔드포인트가 writeErr 로 돌려주는
 // 검증 오류 응답을 한국어로 유지하는 회귀 방어 테스트다. 한국어 판정은 F3a 의
-// assertKoreanError(한글 포함·중국어 한자 0), 응답 본문 추출은 task_categories 테스트의
+// assertEnglishError(한글 포함·중국어 한자 0), 응답 본문 추출은 task_categories 테스트의
 // decodeErrorField 를 재사용한다(같은 package server). 에이전트가 읽는 actool.Errorf 도구
 // 결과와 도구 스키마 description 은 두뇌 경계라 번역 대상이 아니며 이 테스트도 건드리지 않는다.
 
@@ -31,7 +31,7 @@ func TestCustomToolErrorConstantsLocalized(t *testing.T) {
 		{"shellNoExec", errCustomToolShellNoExec},
 		{"unknownKindPrefix", errCustomToolUnknownKindPrefix},
 	} {
-		assertKoreanError(t, "customtool."+c.name, c.msg)
+		assertEnglishError(t, "customtool."+c.name, c.msg)
 	}
 }
 
@@ -67,7 +67,7 @@ func TestCustomToolCreateValidationLocalized(t *testing.T) {
 			if got != c.want {
 				t.Fatalf("응답 본문 불일치: got %q want %q", got, c.want)
 			}
-			assertKoreanError(t, "customtool.create."+c.name, got)
+			assertEnglishError(t, "customtool.create."+c.name, got)
 		})
 	}
 }
@@ -96,7 +96,7 @@ func TestCustomToolTestRunValidationLocalized(t *testing.T) {
 				t.Fatalf("응답 본문 불일치: got %q want %q", got, c.want)
 			}
 			// unknown-kind 는 뒤에 req.Kind("bogus") 라틴 꼬리표가 붙으므로 한자 0 만 확인한다.
-			assertKoreanError(t, "customtool.test."+c.name, errCustomToolUnknownKindPrefix)
+			assertEnglishError(t, "customtool.test."+c.name, errCustomToolUnknownKindPrefix)
 		})
 	}
 }

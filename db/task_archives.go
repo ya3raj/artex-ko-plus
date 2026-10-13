@@ -807,13 +807,13 @@ func ensureDefenseExecutionsFinishedTx(tx *sql.Tx, taskID int64) error {
 		return err
 	}
 	if active {
-		return fmt.Errorf("%w: 방어 검증 재검증을 종료한 뒤 작업을 보관해 주세요", ErrTaskArchiveState)
+		return fmt.Errorf("%w : Please complete the repair of the defense verification and keep the operation.", ErrTaskArchiveState)
 	}
 	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM finding_investigation_runs r JOIN findings f ON f.id=r.finding_id WHERE f.task_id=$1 AND r.status IN ('queued','running'))`, taskID).Scan(&active); err != nil {
 		return err
 	}
 	if active {
-		return fmt.Errorf("%w: 침해 조사를 종료한 뒤 작업을 보관해 주세요", ErrTaskArchiveState)
+		return fmt.Errorf("%w : Please complete the investigation and keep the work.", ErrTaskArchiveState)
 	}
 	return nil
 }

@@ -43,9 +43,9 @@ func decodePurpleRequestLimit(w http.ResponseWriter, r *http.Request, target any
 	}
 	var tooLarge *http.MaxBytesError
 	if errors.As(err, &tooLarge) {
-		writeErr(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("요청 본문은 %d KiB 이하여야 합니다", limit/1024))
+		writeErr(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("The request must be %d KiB or less.", limit/1024))
 	} else {
-		writeErr(w, http.StatusBadRequest, "올바른 JSON 객체와 필드를 입력해 주세요")
+		writeErr(w, http.StatusBadRequest, "Enter the correct JSON objects and fields")
 	}
 	return false
 }
@@ -53,7 +53,7 @@ func decodePurpleRequestLimit(w http.ResponseWriter, r *http.Request, target any
 func purpleFindingID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, ok := pathInt(r, "id")
 	if !ok || id <= 0 {
-		writeErr(w, http.StatusBadRequest, "올바른 취약점 ID를 입력해 주세요")
+		writeErr(w, http.StatusBadRequest, "Please enter the correct vulnerability ID")
 		return 0, false
 	}
 	return id, true
@@ -62,20 +62,20 @@ func purpleFindingID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 func writePurpleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, db.ErrDefenseExecutionNotFound):
-		writeErr(w, http.StatusNotFound, "방어 검증 실행을 찾을 수 없습니다")
+		writeErr(w, http.StatusNotFound, "No Defense Verification Run Found")
 	case errors.Is(err, db.ErrDefenseReplayNotFound):
-		writeErr(w, http.StatusNotFound, "로그 재생 기록을 찾을 수 없습니다")
+		writeErr(w, http.StatusNotFound, "Log playback history not found")
 	case errors.Is(err, db.ErrFindingNotFound):
-		writeErr(w, http.StatusNotFound, "취약점을 찾을 수 없습니다")
+		writeErr(w, http.StatusNotFound, "Vulnerability not found")
 	case errors.Is(err, db.ErrTaskArchiveState):
-		writeErr(w, http.StatusConflict, "보관 중인 작업의 방어 검증 정보는 변경할 수 없습니다")
+		writeErr(w, http.StatusConflict, "The defense validation information for the job in storage cannot be changed.")
 	case errors.Is(err, db.ErrDefenseConflict):
 		writeErr(w, http.StatusConflict, err.Error())
 	case errors.Is(err, db.ErrDefenseInvalid):
 		writeErr(w, http.StatusBadRequest, err.Error())
 	default:
 		log.Printf("[purple] database operation failed: %v", err)
-		writeErr(w, http.StatusInternalServerError, "방어 검증 정보를 처리하지 못했습니다")
+		writeErr(w, http.StatusInternalServerError, "Failed to process defensive verification information")
 	}
 }
 
@@ -148,7 +148,7 @@ func (s *Server) purpleOverview(w http.ResponseWriter, r *http.Request) {
 		if raw := r.URL.Query().Get(p.name); raw != "" {
 			n, err := strconv.Atoi(raw)
 			if err != nil || n < 1 || n > p.max {
-				writeErr(w, http.StatusBadRequest, "페이지는 1~1000000, 표시 개수는 1~100 범위여야 합니다")
+				writeErr(w, http.StatusBadRequest, "Pages should be in the range of 1-100000, and the number of marks should be in the range of 1 to 100")
 				return
 			}
 			*p.target = n

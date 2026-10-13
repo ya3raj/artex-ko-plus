@@ -13,13 +13,13 @@ import (
 // gid)·enum 은 원문 그대로 두고, 사람이 읽는 메시지만 한국어로 둔다. 영어 writeErr
 // (task not found·invalid JSON·bad goal id)는 F3b 중국어 전용 범위라 보존한다.
 const (
-	errGoalTaskDeletingAdd    = "작업을 삭제하는 중이라 목표를 추가할 수 없습니다"
-	errGoalTaskDeletingEdit   = "작업을 삭제하는 중이라 목표를 수정할 수 없습니다"
-	errGoalTaskDeletingDelete = "작업을 삭제하는 중이라 목표를 삭제할 수 없습니다"
-	errGoalTextEmpty          = "목표 내용은 비워 둘 수 없습니다"
-	errGoalNotFound           = "목표를 찾을 수 없습니다"
-	errGoalReadAfterAdd       = "목표를 저장한 뒤 읽지 못했습니다"
-	errGoalReadAfterEdit      = "목표를 수정한 뒤 읽지 못했습니다"
+	errGoalTaskDeletingAdd    = "I'm deleting a task, so I can't add a goal"
+	errGoalTaskDeletingEdit   = "I'm deleting a job, so I can't modify the goal"
+	errGoalTaskDeletingDelete = "I can't delete a goal because I'm deleting a task"
+	errGoalTextEmpty          = "The target content cannot be left blank"
+	errGoalNotFound           = "No goal found"
+	errGoalReadAfterAdd       = "I saved the goal and couldn't read it."
+	errGoalReadAfterEdit      = "I couldn't read it after modifying the goal."
 )
 
 // 总览「目标管理」的人工 CRUD 接口。与 agent 侧的 set_goals 工具写同一批 goal 节点,

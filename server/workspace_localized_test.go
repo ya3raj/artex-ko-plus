@@ -10,7 +10,7 @@ import (
 )
 
 // TestWorkspaceErrorConstantsLocalized guards F3b (workspace.go): every user-facing
-// error string the workspace file manager hands back must be Korean (Hangul present,
+// error string the workspace file manager hands back must be English (Latin present,
 // no Chinese Han). Reverting any literal to Chinese fails this test. The constants
 // are DB-independent, so this always runs (no postgres needed).
 func TestWorkspaceErrorConstantsLocalized(t *testing.T) {
@@ -26,7 +26,7 @@ func TestWorkspaceErrorConstantsLocalized(t *testing.T) {
 		"uploadParse":      errWsUploadParse,
 		"noUploadFile":     errWsNoUploadFile,
 	} {
-		assertKoreanError(t, label, msg)
+		assertEnglishError(t, label, msg)
 	}
 }
 
@@ -44,8 +44,8 @@ func wsErrBody(t *testing.T, rec *httptest.ResponseRecorder) string {
 
 // TestWorkspaceHandlerResponsesLocalized drives the workspace file-manager handlers
 // over real HTTP. They only touch s.m.dir and the filesystem (never s.m.pg), so a
-// temp-dir Manager is enough — no DB. This proves the Korean constants actually land
-// in the HTTP response body, not just that the constants are Korean.
+// temp-dir Manager is enough — no DB. This proves the English constants actually land
+// in the HTTP response body, not just that the constants are English.
 func TestWorkspaceHandlerResponsesLocalized(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
@@ -84,7 +84,7 @@ func TestWorkspaceHandlerResponsesLocalized(t *testing.T) {
 			if got != c.want {
 				t.Fatalf("error = %q, want %q", got, c.want)
 			}
-			assertKoreanError(t, c.name, got)
+			assertEnglishError(t, c.name, got)
 		})
 	}
 }

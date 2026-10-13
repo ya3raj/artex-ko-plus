@@ -12,7 +12,7 @@ import (
 	"github.com/Autumn-27/artex/securitysource"
 )
 
-var ErrSecuritySourceNotFound = errors.New("보안 로그 연결을 찾을 수 없습니다")
+var ErrSecuritySourceNotFound = errors.New("Secure log connection not found")
 
 type SecuritySource struct {
 	ID            int64                 `json:"id,string"`
@@ -99,7 +99,7 @@ func (d *DB) SaveSecuritySource(ctx context.Context, id, expected int64, name st
 	}
 	if len(cipher) == 0 {
 		if old.Config.BaseURL != cfg.BaseURL {
-			return nil, errors.New("연결 주소를 변경할 때 인증 정보를 다시 입력해 주세요")
+			return nil, errors.New("Please re-enter your authentication information when changing your connection address")
 		}
 		cipher = old.SecretCipher
 	}

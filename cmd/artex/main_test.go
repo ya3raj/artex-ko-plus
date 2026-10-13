@@ -33,13 +33,13 @@ func TestPrintBannerLocalized(t *testing.T) {
 	t.Logf("배너 샘플:\n%s", out)
 
 	hasHangul := strings.ContainsFunc(out, func(r rune) bool {
-		return unicode.Is(unicode.Hangul, r)
+		return unicode.Is(unicode.Latin, r)
 	})
 	if !hasHangul {
 		t.Fatalf("배너에 한글이 없다: %q", out)
 	}
 
-	for _, want := range []string{"자율 침투 테스트 시스템", "버전", "수신 대기", ":8787"} {
+	for _, want := range []string{"Autonomous Penetration Test System", "Version", "listen", ":8787"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("배너에 %q 가 없다: %q", want, out)
 		}

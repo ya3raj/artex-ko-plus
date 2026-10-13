@@ -29,14 +29,14 @@ func hanFreeItems(n int) []Item {
 func TestMarkdownTitleLocalized(t *testing.T) {
 	// 다건(汇总): "취약점 요약 · 총 N건"
 	got := markdownTitle(Message{Batch: true, Items: hanFreeItems(3)})
-	assertKorean(t, "markdownTitle(batch)", got)
-	if !strings.Contains(got, "취약점 요약") || !strings.Contains(got, "총 3건") {
+	assertEnglish(t, "markdownTitle(batch)", got)
+	if !strings.Contains(got, "Finding summary") || !strings.Contains(got, "Total 3") {
 		t.Errorf("다건 제목이 '취약점 요약 · 총 3건' 형태여야 합니다, 받은 값 %q", got)
 	}
 	// 항목 없음: "취약점 알림"
 	empty := markdownTitle(Message{})
-	assertKorean(t, "markdownTitle(empty)", empty)
-	if empty != "취약점 알림" {
+	assertEnglish(t, "markdownTitle(empty)", empty)
+	if empty != "Finding notification" {
 		t.Errorf("빈 메시지 제목은 '취약점 알림' 이어야 합니다, 받은 값 %q", empty)
 	}
 }
@@ -52,7 +52,7 @@ func TestMarkdownBatchIntroLocalized(t *testing.T) {
 	if hasHan(win) {
 		t.Errorf("시간창 머리말에 중국어 한자가 남았습니다: %q", win)
 	}
-	if !strings.Contains(win, "최근 30분간") || !strings.Contains(win, "신규 취약점 3건") {
+	if !strings.Contains(win, "30-minute summary") || !strings.Contains(win, "3 new findings") {
 		t.Errorf("시간창 머리말이 '최근 30분간 신규 취약점 3건' 형태여야 합니다, 받은 값 %q", win)
 	}
 
@@ -61,7 +61,7 @@ func TestMarkdownBatchIntroLocalized(t *testing.T) {
 	if hasHan(noWin) {
 		t.Errorf("머리말에 중국어 한자가 남았습니다: %q", noWin)
 	}
-	if !strings.Contains(noWin, "신규 취약점 3건") || strings.Contains(noWin, "분간") {
+	if !strings.Contains(noWin, "3 new findings") || strings.Contains(noWin, "minute") {
 		t.Errorf("시간창 없는 머리말은 '신규 취약점 3건'(분간 표기 없음)이어야 합니다, 받은 값 %q", noWin)
 	}
 
@@ -70,7 +70,7 @@ func TestMarkdownBatchIntroLocalized(t *testing.T) {
 	if hasHan(trunc) {
 		t.Errorf("초과 안내에 중국어 한자가 남았습니다: %q", trunc)
 	}
-	for _, want := range []string{"앞 3건만", "나머지 2건", "다음 메시지에서"} {
+	for _, want := range []string{"first 3 findings", "remaining 2", "next message"} {
 		if !strings.Contains(trunc, want) {
 			t.Errorf("초과 안내에 %q 가 있어야 합니다, 받은 값 %q", want, trunc)
 		}
@@ -94,13 +94,13 @@ func TestWriteItemLabelsLocalized(t *testing.T) {
 	writeItem(&b, it, "", true)
 	got := b.String()
 
-	assertKorean(t, "writeItem(single)", got)
+	assertEnglish(t, "writeItem(single)", got)
 	for _, want := range []string{
-		"**상태 변경**: 처리 대기 → 수정됨",
-		"**유형**: SQLi",
-		"**자산**: a.example.com",
-		"**개요**: SQL injection via q param",
-		"[상세 보기](https://platform.example/finding/1)",
+		"**Status change**: Pending → Fixed",
+		"**Type**: SQLi",
+		"**Assets**: a.example.com",
+		"**Overview**: SQL injection via q param",
+		"[View details](https://platform.example/finding/1)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("단건 렌더에 %q 가 있어야 합니다:\n%s", want, got)
@@ -116,7 +116,7 @@ func TestMarkdownBodyFooterLocalized(t *testing.T) {
 	if kept != 2 {
 		t.Fatalf("한도 없음(0)이면 2건 모두 담겨야 합니다, 받은 값 %d", kept)
 	}
-	if !strings.Contains(body, "[플랫폼에서 전체 보기](https://platform.example)") {
+	if !strings.Contains(body, "[View all on platform](https://platform.example)") {
 		t.Errorf("본문 끝에 '플랫폼에서 전체 보기' 링크가 있어야 합니다:\n%s", body)
 	}
 }

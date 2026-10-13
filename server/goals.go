@@ -18,8 +18,8 @@ import (
 // 로 고정이라 재개 검증에 닿지 않으므로 두뇌 입력이 아니다. 용어는 task_control.go 의
 // 종료 상태·일시정지 문구와 맞춘다(resume=재개).
 const (
-	errGoalResumeTerminal  = "종료된 작업은 재개할 수 없습니다"
-	errGoalResumeNotPaused = "일시정지된 작업만 재개할 수 있습니다"
+	errGoalResumeTerminal  = "Ended operations cannot be resumed"
+	errGoalResumeNotPaused = "Only suspended operations can be resumed."
 )
 
 type goalSpec struct {
@@ -39,10 +39,10 @@ type goalSpec struct {
 // 초기 목표 분해 라운드와 동시 실행 대기열 상태 안내다. 한국어화해도 두뇌 입력
 // (BRIEF 경계 #1)을 건드리지 않는다. 포맷 인자(%d)는 원형 보존. [[G132]]
 const (
-	goalBreakdownRound0Summary       = "0차 목표 분해"
-	queuedConcurrencyLimitSummaryFmt = "대기열 등록: 동시 실행 상한 %d개에 도달해, 빈자리가 나면 자동으로 시작합니다"
-	queuedNoLLMSummary               = "대기열 등록: 현재 실행 가능한 LLM 설정이 없어, 설정이 복구되면 자동으로 시작합니다"
-	queuedFIFOSummary                = "대기열 등록: 먼저 대기 중인 작업이 있어, FIFO 순서대로 자동으로 시작합니다"
+	goalBreakdownRound0Summary       = "Initial goal decomposition"
+	queuedConcurrencyLimitSummaryFmt = "Queued: the concurrency limit of %d has been reached. Starts automatically when a slot opens."
+	queuedNoLLMSummary               = "Queue registration: There is currently no viable LLM setup, so when the setup is restored, it will start automatically"
+	queuedFIFOSummary                = "Queue registration: First there is a job waiting for you, which starts automatically in the FIFO order"
 )
 
 func (s *Server) launchTask(t *Task, seedText string, seedFirstIntent bool) {
@@ -55,7 +55,7 @@ func (s *Server) launchTask(t *Task, seedText string, seedFirstIntent bool) {
 	}
 	s.engine.decInflight(t.ID)
 	if _, err := s.admitTask(t, "bootstrap"); err != nil {
-		log.Printf("[concurrency] task %s 启动失败: %v", t.ID, err)
+		log.Printf("[concurrency] task %s Failed to start: %v", t.ID, err)
 	}
 }
 
@@ -197,8 +197,8 @@ func (s *Server) admitTaskWhen(t *Task, mode string, requirePaused bool) (queued
 	// this ordering, its already-running worker loops can claim the newly-opened
 	// intent in the gap between status=running and queued=true.
 	if shouldQueue || wasTerminal || wasPaused || wasQueued {
-		s.engine.Pause(t.ID, agent.Causef("queued_for_admission", "任务等待运行准入",
-			"任务正在等待并发队列或准入状态提交，本次执行已停止；只有获得运行槽后才会重新领取意图"))
+		s.engine.Pause(t.ID, agent.Causef("queued_for_admission", "Task waiting for operational access",
+			"The task is waiting for the concurrent queue or status submission, and the execution has been stopped; the intention is re-received only after the running slot is obtained"))
 	}
 
 	status := lifecycle.Status
@@ -286,11 +286,11 @@ func (s *Server) reconcileConcurrency() {
 				continue
 			}
 			mode := s.resumeAdmissionMode(task)
-			s.engine.Pause(task.ID, agent.Causef("llm_unavailable_queued", "LLM 不可用，任务进入等待队列",
-				"任务当前无法解析可运行的 Planner/Worker LLM，已释放并发槽；配置恢复后按队列顺序继续"))
+			s.engine.Pause(task.ID, agent.Causef("llm_unavailable_queued", "LLM is not available, task entry waiting queue",
+				"The task currently fails to resolve the runable Planner/Worker LLM, has been released and slotted; the configuration resumes and continues in queue order."))
 			if err := s.m.EnqueueTask(task.ID, mode); err != nil {
 				s.engine.Resume(task)
-				log.Printf("[concurrency] task %s 因 LLM 不可用入队失败: %v", task.ID, err)
+				log.Printf("[concurrency] task %s Failed due to LLM not available: %v", task.ID, err)
 				continue
 			}
 			s.engine.emitActivity(task, db.Activity{Worker: "system", Kind: "text",
@@ -377,7 +377,7 @@ func (s *Server) reviveTask(t *Task) {
 		return
 	}
 	if _, err := s.admitTask(t, "resume"); err != nil {
-		log.Printf("[revive] task %s 恢复失败: %v", t.ID, err)
+		log.Printf("[revive] task %s Recovery failure: %v", t.ID, err)
 	}
 }
 
@@ -416,7 +416,7 @@ func (s *Server) createGoals(ctx context.Context, t *Task, emit func(db.Activity
 		// as a single goal so the task still has something to judge against. This is the
 		// only path that writes here — decomposed goals are already persisted by the tool.
 		if g := strings.TrimSpace(t.Goal); g != "" {
-			log.Printf("[goals] task %s: LLM 目标拆解无产出，回退为「原始目标作为单目标」", t.ID)
+			log.Printf("[goals] task %s : LLM target disassembly without output, fall back to \"original target as a single goal\"", t.ID)
 			origin, _ := t.Store.OriginFactID()
 			id, _ := t.Store.AddNode(db.KindGoal, map[string]any{"text": g}, 0, "open", "system", nil)
 			if origin > 0 && id > 0 {

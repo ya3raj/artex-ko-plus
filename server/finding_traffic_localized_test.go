@@ -3,7 +3,7 @@ package server
 import "testing"
 
 // finding_traffic.go 의 사용자 노출 HTTP 에러 응답 문구를 한국어로 유지하는 회귀 방어
-// 테스트다. 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를
+// 테스트다. 한국어 판정은 F3a 가 만든 assertEnglishError(한글 포함·중국어 한자 0)를
 // 재사용한다. 네 문구를 반환하는 경로(findingTrafficAccess·bindFindingTraffic·
 // editFindingTraffic)는 전부 s.m.pg.GetFinding(DB) 게이트 뒤라 DB 없는 이 호스트에서
 // 끝까지 돌 수 없으므로 상수 자체를 핀 고정한다(goals_api·notify_api 의 DB 게이트
@@ -21,6 +21,6 @@ func TestFindingTrafficErrorsLocalized(t *testing.T) {
 		{"version_required", errFindingTrafficVersionRequired},
 		{"binding_ids_required", errFindingTrafficBindingIDsRequired},
 	} {
-		assertKoreanError(t, c.label, c.msg)
+		assertEnglishError(t, c.label, c.msg)
 	}
 }

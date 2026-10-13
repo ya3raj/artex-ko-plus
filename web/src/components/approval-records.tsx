@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/config";
+
 import * as React from "react";
 
 import {
@@ -40,7 +42,7 @@ type Translator = ReturnType<typeof useTranslations>;
 
 function fmtTime(value?: string) {
   if (!value) return "—";
-  return new Date(value).toLocaleString("ko-KR", {
+  return new Date(value).toLocaleString(resolveLocale(), {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",

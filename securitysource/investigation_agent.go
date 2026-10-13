@@ -35,7 +35,7 @@ func BuildInvestigationFilteredSearch(c Config, scope investigation.Scope, mappi
 			continue
 		}
 		if pair.field == "" || len(pair.value) > 256 || !utf8.ValidString(pair.value) || strings.ContainsAny(pair.value, "\x00\r\n") {
-			return "", fmt.Errorf("%w: 후속 조회 값과 원본 필드 매핑을 확인해 주세요", ErrInvalid)
+			return "", fmt.Errorf("%w : Check the follow-up lookup value and the original field mapping", ErrInvalid)
 		}
 	}
 	for _, pair := range []struct{ field, value string }{{mapping.SourceIP, f.SourceIP}, {mapping.User, f.User}, {mapping.Session, f.Session}} {

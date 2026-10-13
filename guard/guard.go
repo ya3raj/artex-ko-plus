@@ -121,11 +121,11 @@ func (g *Guard) applyIntercept(ctx context.Context, ev hook.Event) hook.Result {
 		// immediately without creating a pending record — avoids orphaned DB entries
 		// and makes execOne complete fast, reducing the race against drainSynthetic.
 		if ctx.Err() != nil {
-			return g.block(ev.ToolName, systemBlockMessage("工作已取消，平台安全管控阻止执行"), "")
+			return g.block(ev.ToolName, systemBlockMessage("Work has been cancelled, and platform security controls have been prevented from performing"), "")
 		}
 		convID := intercept.ConvIDFromContext(ctx)
 		if !g.interceptor.HandleAsk(ctx, convID, dec, ev.ToolName, ev.Input) {
-			return g.block(ev.ToolName, systemBlockMessage("人工审批未通过（用户拒绝或审批超时）"), "")
+			return g.block(ev.ToolName, systemBlockMessage("Manual approval failed (user refusal or approval timeout)"), "")
 		}
 		return hook.Result{}
 	}

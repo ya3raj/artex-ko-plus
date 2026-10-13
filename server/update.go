@@ -24,13 +24,13 @@ import (
 // 프런트엔드(system/settings 의 update-card)가 progress.message·reason·writeErr
 // 본문을 그대로 렌더하므로 한국어로 둔다. 로그·중국어 주석은 Z2(로그 최하위)라 범위 밖.
 const (
-	updateMsgPreparing          = "준비 중…"
-	updateMsgFailed             = "업데이트 실패"
-	updateMsgStaged             = "새 버전이 준비되었습니다. 재시작 중…"
-	updateErrNotReleaseFmt      = "현재 버전 %q 은(는) 정식 릴리스 버전이 아니므로 원클릭 업데이트를 사용할 수 없습니다"
-	updateErrAlreadyLatestFmt   = "이미 최신 버전입니다 (%s)"
-	updateErrInProgress         = "이미 업데이트가 진행 중입니다"
-	updateErrRollbackInProgress = "업데이트가 진행 중이어서 롤백할 수 없습니다"
+	updateMsgPreparing          = "Preparing..."
+	updateMsgFailed             = "Update Failed"
+	updateMsgStaged             = "New version is ready. Restarting..."
+	updateErrNotReleaseFmt      = "The current version %q is not available for one-click updates because it is not a full-release version"
+	updateErrAlreadyLatestFmt   = "Already the latest version (%s)"
+	updateErrInProgress         = "Updates are already in progress"
+	updateErrRollbackInProgress = "The update is in progress and cannot be rolled back"
 )
 
 // restartCh 在升级就绪或回滚完成后关闭，main 收到后以 ExitRestart 退出。
@@ -312,10 +312,10 @@ func (s *Server) updateApply(w http.ResponseWriter, r *http.Request) {
 		})
 		updHub.finish(err)
 		if err != nil {
-			log.Printf("[update] 更新失败：%v", err)
+			log.Printf("[update] Failed update: %v", err)
 			return
 		}
-		log.Printf("[update] %s → %s 已暂存，即将退出以完成换装", current, rel.TagName)
+		log.Printf("[update] %s → %s is temporarily stored, is about to withdraw to complete the replacement", current, rel.TagName)
 		// 留一点时间把最后一条进度推给前端，再触发退出。
 		time.Sleep(1500 * time.Millisecond)
 		requestRestart()
@@ -334,7 +334,7 @@ func (s *Server) updateRollback(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, err.Error())
 		return
 	}
-	log.Printf("[update] 已手动回滚到上一版本，即将退出以完成切换")
+	log.Printf("[update] has been manually rolled back to the previous version, is about to quit to complete the switch")
 	writeJSON(w, 202, map[string]any{"ok": true})
 	go func() {
 		time.Sleep(500 * time.Millisecond)

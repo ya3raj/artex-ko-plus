@@ -32,22 +32,22 @@ const (
 // JSON 필드명(dimension·targets 등)은 원문 그대로 두고, 중국어 문구만 한국어로 옮긴다(BRIEF F3 방침).
 // UI(web/messages/ko.json 의 sync 네임스페이스)와 "데이터 소스" 표기를 맞춘다.
 const (
-	errSSDataSourceMissingFmt = "데이터 소스 %s 가 없습니다. 먼저 생성해 주세요"
-	errSSDataSourceNoURLFmt   = "데이터 소스 %s 에 URL 이 설정되지 않았습니다. 먼저 설정해 주세요"
-	errSSListProjectsPrefix   = "list_projects_data 호출에 실패했습니다: "
-	errSSParseProjectsPrefix  = "프로젝트 목록을 해석하지 못했습니다: "
-	errSSListTasksPrefix      = "list_tasks 호출에 실패했습니다: "
-	errSSParseTasksPrefix     = "작업 목록을 해석하지 못했습니다: "
-	errSSDimension            = "dimension 값은 project 또는 task 중 하나여야 합니다"
-	errSSTargetsEmpty         = "targets 항목은 비워 둘 수 없습니다"
-	warnSSProjectMetaFmt      = "프로젝트 %s 의 상세 정보를 가져오지 못했습니다: %v"
-	warnSSCompanyCreateFmt    = "회사 %s 생성에 실패했습니다: %v"
-	warnSSUnknownAssetPrefix  = "알 수 없는 자산 유형이라 건너뛰었습니다: "
-	errSSFetchFmt             = "%s(%s) 자산을 가져오지 못했습니다: %v"
-	warnSSTruncatedFmt        = "%s(%s) 가 %d 건 상한에 도달해 잘렸습니다"
-	errSSParseSubdomainPrefix = "subdomain 응답을 해석하지 못했습니다: "
-	errSSParseAppPrefix       = "app 응답을 해석하지 못했습니다: "
-	errSSParseServicePrefix   = "service 응답을 해석하지 못했습니다: "
+	errSSDataSourceMissingFmt = "There is no data source %s. Please create one first"
+	errSSDataSourceNoURLFmt   = "The URL is not set in the data source %s. Please set it first"
+	errSSListProjectsPrefix   = "The list_projects_data call failed: "
+	errSSParseProjectsPrefix  = "Failed to interpret project list: "
+	errSSListTasksPrefix      = "The list_tasks call failed: "
+	errSSParseTasksPrefix     = "Failed to interpret task list: "
+	errSSDimension            = "The dimension value must be either a project or a task."
+	errSSTargetsEmpty         = "Targets cannot be left empty"
+	warnSSProjectMetaFmt      = "Could not fetch details for project %s: %v"
+	warnSSCompanyCreateFmt    = "Could not create company %s: %v"
+	warnSSUnknownAssetPrefix  = "I skipped an unknown asset type: "
+	errSSFetchFmt             = "%s(%s) Failed to fetch assets: %v"
+	warnSSTruncatedFmt        = "%s(%s) %d and cut to the top."
+	errSSParseSubdomainPrefix = "Failed to interpret subdomain response: "
+	errSSParseAppPrefix       = "Failed to interpret app response: "
+	errSSParseServicePrefix   = "Failed to interpret service response: "
 )
 
 // findMCPByName returns the MCP server row with the given name, or nil.

@@ -292,7 +292,7 @@ func TestOffensiveCandidateReviewErrorsAreSafeAndActionable(t *testing.T) {
 	if got := offensiveReviewError(errors.New("private-provider-key-in-error")); strings.Contains(got, "private-provider-key") {
 		t.Fatal("provider credentials leaked")
 	}
-	if got := offensiveReviewError(context.DeadlineExceeded); !strings.Contains(got, "300초") {
+	if got := offensiveReviewError(context.DeadlineExceeded); !strings.Contains(got, "300 seconds") {
 		t.Fatal("missing bounded candidate deadline", got)
 	}
 }

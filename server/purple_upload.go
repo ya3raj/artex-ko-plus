@@ -32,7 +32,7 @@ func (s *Server) uploadDefenseExecution(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if execution.SourceKind != "file" {
-		writeErr(w, http.StatusConflict, "Splunk 연결 실행에는 파일을 업로드할 수 없습니다. 파일 연결로 새 실행을 시작해 주세요")
+		writeErr(w, http.StatusConflict, "You cannot upload a file to run the Splunk connection. Please start a new execution with the file association")
 		return
 	}
 	query, windowComplete, err := defenseExecutionWindow(execution, time.Now().UTC())
@@ -44,14 +44,14 @@ func (s *Server) uploadDefenseExecution(w http.ResponseWriter, r *http.Request) 
 		Config securitysource.FileConfig `json:"config"`
 	}
 	if json.Unmarshal(execution.SourceSnapshot, &snapshot) != nil {
-		writeErr(w, http.StatusConflict, "실행 당시 파일 연결 설정을 읽지 못했습니다")
+		writeErr(w, http.StatusConflict, "Failed to read file association settings at the time of execution")
 		return
 	}
 	select {
 	case defenseCollectSlots <- struct{}{}:
 		defer func() { <-defenseCollectSlots }()
 	default:
-		writeErr(w, http.StatusTooManyRequests, "다른 증거 수집이 진행 중입니다. 잠시 후 다시 시도해 주세요")
+		writeErr(w, http.StatusTooManyRequests, "Other evidence is being collected. Please try again in a moment.")
 		return
 	}
 	var input securitysource.FileUpload
@@ -63,13 +63,13 @@ func (s *Server) uploadDefenseExecution(w http.ResponseWriter, r *http.Request) 
 		if errors.Is(err, securitysource.ErrInvalid) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 		} else {
-			writeErr(w, http.StatusBadRequest, "로그 파일을 분석하지 못했습니다. 지원 형식과 필드 설정을 확인해 주세요")
+			writeErr(w, http.StatusBadRequest, "Log file could not be analyzed. Please check the support format and field settings")
 		}
 		return
 	}
 	if !windowComplete {
 		evidence.Complete = false
-		evidence.Warnings = append(evidence.Warnings, "진단 종료 후 60초의 관측 기간이 아직 끝나지 않았습니다. 이후 전체 기간의 로그를 다시 업로드해 주세요")
+		evidence.Warnings = append(evidence.Warnings, "Sixty seconds of observation after the diagnosis is not over yet. Please re-upload the entire log.")
 	}
 	assessment, err := pg.SaveDefenseAssessment(r.Context(), findingID, executionID, evidence)
 	if err != nil {

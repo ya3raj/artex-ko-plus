@@ -41,38 +41,38 @@ var BuildVersion = "dev"
 // 최종 사용자 응답만 한국어로 둔다. (F3b, 번역어는 완료 파일·web i18n 과 동일 표기)
 const (
 	// 의도 제어·재실행 (controlIntent / rerunIntent / rerunBlocked)
-	errTaskDeletingIntentControl = "작업을 삭제하는 중이라 의도를 제어할 수 없습니다"
-	errTaskDeletingIntentRerun   = "작업을 삭제하는 중이라 의도를 재실행할 수 없습니다"
-	errIntentNotRerunnable       = "재실행할 수 있는 상태가 아닙니다(blocked·exhausted·stopped 만 재실행할 수 있습니다)"
+	errTaskDeletingIntentControl = "I can't control my intent because I'm deleting a job"
+	errTaskDeletingIntentRerun   = "You can't re-run the intent because you're deleting a job"
+	errIntentNotRerunnable       = "It is not a re-run state (blocked·exhausted·stopped only)"
 
 	// 작업 생성 (createTask) — 소스 작업·기업·분류·작업 수준 가로채기 규칙 검증
-	errCreateTaskSourceLimit     = "소스 작업은 최대 %d개까지 연결할 수 있습니다"
-	errCreateTaskSourceInvalid   = "소스 작업 id가 올바르지 않거나 중복되었습니다"
-	errCreateTaskSourceNotFound  = "소스 작업 #%d를 찾을 수 없습니다"
-	errCreateTaskCompanyLimit    = "연결 기업이 올바르지 않습니다: 유효한 기업은 최대 %d개까지 선택할 수 있습니다"
-	errCreateTaskInterceptRules  = "작업 수준 가로채기 규칙이 올바르지 않습니다: "
-	errCreateTaskCategoryInvalid = "작업 분류를 찾을 수 없거나 올바르지 않습니다"
-	errCreateTaskCompanyInvalid  = "연결 기업을 찾을 수 없거나 올바르지 않습니다"
+	errCreateTaskSourceLimit     = "Source operations can connect up to %d"
+	errCreateTaskSourceInvalid   = "The source job id is invalid or duplicated"
+	errCreateTaskSourceNotFound  = "Source task # %d not found"
+	errCreateTaskCompanyLimit    = "Connection enterprise is not correct: available enterprises can choose up to %d"
+	errCreateTaskInterceptRules  = "The job-level intercept rule is incorrect: "
+	errCreateTaskCategoryInvalid = "Job classification cannot be found or incorrect"
+	errCreateTaskCompanyInvalid  = "I can't find a connected company or it's not correct"
 
 	// LLM 설정 검증 (validateTaskProfileIDs → createTask/updateTaskLLMProfiles writeErr)
-	errLLMProfileInvalid  = "LLM 설정 id가 올바르지 않거나 중복되었습니다"
-	errLLMProfileNotFound = "LLM 설정 #%d를 찾을 수 없거나 API Key가 설정되어 있지 않습니다"
+	errLLMProfileInvalid  = "The LLM setting id is invalid or redundant"
+	errLLMProfileNotFound = "LLM Settings %d cannot be found or the API Key is not set"
 
 	// 자산 저장소·커버리지 (taskCoverage / taskCoverageGraph / taskAssetRefs …)
-	errAssetStoreDisabled = "자산 저장소가 활성화되어 있지 않습니다"
-	errAssetIDRequired    = "asset_id가 필요합니다"
+	errAssetStoreDisabled = "Asset storage is not active"
+	errAssetIDRequired    = "I need an asset_id."
 
 	// 파이썬 인터프리터 탐지 (pgDetectPython)
-	errPythonNotDetected = "python을 찾을 수 없습니다(python3·python 모두 PATH에 없습니다)"
+	errPythonNotDetected = "Could not find python (both python3 and python are not in PATH)"
 
 	// 알림 전역 설정 (링크 기준 주소·요약 주기 — web notify.global 라벨과 동일 표기)
-	errNotifyBaseURLScheme = "링크 기준 주소는 http:// 또는 https://로 시작해야 합니다"
-	errNotifyDigestRange   = "요약 주기는 1~1440분 사이여야 합니다"
+	errNotifyBaseURLScheme = "The link reference address must start https://로 or https://로"
+	errNotifyDigestRange   = "The summary period should be between 1 and 1440 minutes."
 
 	// 메인 에이전트 대화·세션 (newMainSession / chat)
-	errTaskDeletingNewSession = "작업을 삭제하는 중이라 새 세션을 만들 수 없습니다"
-	errTaskDeletingNewMessage = "작업을 삭제하는 중이라 새 메시지를 보낼 수 없습니다"
-	errMainAgentBusy          = "메인 에이전트가 이전 메시지를 처리하는 중입니다. 잠시 후 다시 시도해 주세요"
+	errTaskDeletingNewSession = "I can't create a new session because I'm deleting a job"
+	errTaskDeletingNewMessage = "I'm deleting a job and I can't send a new message"
+	errMainAgentBusy          = "The main agent is processing the previous message. Please try again in a moment."
 )
 
 // 사용자에게 노출되지만 writeErr 를 거치지 않는 응답 문구(한국어). writeJSON 의 error
@@ -80,13 +80,13 @@ const (
 // nav 경로는 web i18n 라벨(nav.system="시스템", llmConfig="LLM 설정")과 동일 표기. (F34)
 const (
 	// 채팅 LLM 부재 사유 (chatUnavailableReason → writeErr 503 / 대화 종료 사유)
-	errChatNoLLMProfile       = "아직 LLM 설정이 없습니다: 시스템 → LLM 설정에서 설정을 하나 추가해 주세요"
-	errChatNoActiveLLMProfile = "활성화된 LLM 설정이 없습니다: 시스템 → LLM 설정에서 하나를 활성화하거나, 이 대화에서 사용할 설정을 지정해 주세요"
-	errChatLLMNotReady        = "LLM이 준비되지 않아 대화할 수 없습니다: 시스템 → LLM 설정에 사용할 수 있고 활성화된 설정이 있는지 확인해 주세요"
+	errChatNoLLMProfile       = "There are no LLM settings yet: System → Add a setting in the LLM setting."
+	errChatNoActiveLLMProfile = "There are no active LLM settings: System → Enable one in the LLM setting, or set the settings to use in this conversation."
+	errChatLLMNotReady        = "You can't talk because your LLM is not ready: Make sure you have a system → LLM setup that is available and active."
 
 	// LLM 연결 테스트·웹 검색 프로브 (writeJSON {ok:false, error:…}, 설정 화면 점검 결과)
-	errLLMTestNoAPIKey         = "API Key가 제공되지 않았습니다"
-	errWebSearchProbeNoResults = "검색 결과가 0건입니다(요청이 제한되었거나 프록시가 연결되지 않았을 수 있습니다)"
+	errLLMTestNoAPIKey         = "API Key not provided"
+	errWebSearchProbeNoResults = "There are zero search results (the request may have been limited or the proxy may not be connected)"
 )
 
 // 규칙 모드 채팅(LLM 미설정 시 사람이 직접 조종하는 fallbackChat) 사용자 응답(한국어).
@@ -95,9 +95,9 @@ const (
 // 순수 입력 파싱이고 와이어 포맷이 아니므로 중국어·영어 트리거를 유지한 채 더하기만 한다.
 // 용어는 web i18n·GLOSSARY 와 정합: intent→의도, hint→힌트, finding→취약점, planner→플래너. (F34 d)
 const (
-	fallbackIntentInjected = "우선순위 높은 의도를 하나 주입했습니다: "
-	fallbackHintRecorded   = "힌트를 기록했습니다. 플래너가 다음에 읽습니다: "
-	fallbackChatStatus     = "(규칙 모드, LLM 미설정) 현재 현황: 자산 %d개, 대기 의도 %d개, 확인된 취약점 %d개.\n사용 가능한 명령: \"의도 ...\"로 의도를 주입하고, \"힌트 ...\"로 플래너에게 힌트를 전달합니다."
+	fallbackIntentInjected = "We have instilled a high-priority intent: "
+	fallbackHintRecorded   = "I've logged a hint. The planner reads: "
+	fallbackChatStatus     = "(Rule mode, no LLM configured) Current status: %d assets, %d pending intents, %d confirmed findings.\nCommands: use \"Intent ...\" to add an intent or \"Hint ...\" to send a hint to the planner."
 )
 
 // Server exposes the ARTEX backend over a JSON HTTP API for the shadcn/ui
@@ -314,7 +314,7 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 		} else {
 			// 핵심 기능(취약점 IM 알림 전송)을 끄는 분기라 시작 로그를 남긴다. 이 변수는
 			// 통합 테스트 전용이므로, 운영에서 켜져 있으면 실수나 환경 상속을 의심할 단서가 된다.
-			log.Printf("[notify] 백그라운드 알림 전송 루프가 %s 로 꺼졌습니다(테스트 전용) — 취약점 IM 알림이 전송되지 않습니다", notifyBackgroundDisabledEnv)
+			log.Printf("[notify] Background notification transfer loop turned off to %s (test only) — Vulnerability IM notifications not being sent", notifyBackgroundDisabledEnv)
 		}
 		// Fill the tool cache for any enabled MCP that has none yet (notably the
 		// seeded browser MCP on first run). Async so it never blocks startup.
@@ -355,7 +355,7 @@ func (s *Server) restoreTaskRuntimes() {
 		// clear stale 'running' intents from a prior crash/restart (no live worker
 		// owns them) so they re-claim instead of spinning forever in the UI.
 		if n, _ := t.Store.ResetRunningIntents(); n > 0 {
-			log.Printf("[engine] task %s 重置 %d 个残留 running 意图为 open", t.ID, n)
+			log.Printf("[engine] task %s reset %d residual running with the intent to open", t.ID, n)
 		}
 		if lifecycle.Paused {
 			s.engine.Pause(t.ID, agent.AbortPausedOnReload)
@@ -1318,7 +1318,7 @@ func (s *Server) rerunIntent(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	log.Printf("[task] #%s 意图 #%d 已重开(重跑)", t.ID, iid)
+	log.Printf("[task] # %s Intent # %d Reopened (re-run)", t.ID, iid)
 	writeJSON(w, 200, map[string]any{"id": t.ID, "reopened": iid, "queued": queued})
 }
 
@@ -1368,7 +1368,7 @@ func (s *Server) rerunBlocked(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, 500, err.Error())
 			return
 		}
-		log.Printf("[task] #%s 批量重开 %d 条 blocked 意图", t.ID, n)
+		log.Printf("[task] # %s Reopen %d blocked intent", t.ID, n)
 	}
 	writeJSON(w, 200, map[string]any{"id": t.ID, "reopened": n, "queued": queued})
 }
@@ -1555,7 +1555,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.TrimSpace(req.Description) == "" {
-		req.Description = "未命名任务"
+		req.Description = "Unnamed missions"
 	}
 	if len(req.LLMProfileIDs) == 0 && req.LLMProfileID != nil {
 		req.LLMProfileIDs = []int64{*req.LLMProfileID}
@@ -1616,7 +1616,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	log.Printf("[task] 新建任务 #%s «%s» 目标: %s", t.ID, req.Description, req.Goal)
+	log.Printf("[task] New task # %s « %s » Target: %s", t.ID, req.Description, req.Goal)
 	// 共享的建后流程(seed + 种子意图 + 后台目标分解 + engine.Run),与 spawn_task 复用同一段。
 	// launchTask 内部异步,不阻塞 UI —— 目标分解在后台可见地进行。
 	s.launchTask(t, req.Description+" "+req.Goal, req.SeedFirstIntent != nil && *req.SeedFirstIntent)
@@ -1756,12 +1756,12 @@ func (s *Server) llmHost() string {
 func (s *Server) seed(t *Task, text string) {
 	scheme, host, port, ok := parseTarget(text)
 	if !ok {
-		log.Printf("[seed] task %s: 未能从 %q 解析出目标 host/IP，不创建站点（请手动配置 scope）", t.ID, text)
+		log.Printf("[seed] task %s : Fails to parse the target host/IP from %q, does not create a site (please configure the scope manually)", t.ID, text)
 		return
 	}
 	// P0-1 guard: never treat the configured LLM gateway as a target.
 	if gw := s.llmHost(); gw != "" && host == gw {
-		log.Printf("[seed] task %s: 目标 %q 是 LLM 网关，拒绝作为渗透目标", t.ID, host)
+		log.Printf("[seed] task %s : The target %q is the LLM gateway, rejected as the infiltration target", t.ID, host)
 		return
 	}
 
@@ -1790,7 +1790,7 @@ func (s *Server) seed(t *Task, text string) {
 			_ = t.Store.Anchor(begin, rootID)
 		}
 	}
-	log.Printf("[seed] task %s: 目标站点 %s", t.ID, u)
+	log.Printf("[seed] task %s : target site %s", t.ID, u)
 	// 不在这里 Notify:首轮是否触发统一由 engine.Run 的 HasActiveIntent 决定(种子意图任务
 	// 跳过首轮)。seed 早于 Run 执行,若在此 Notify 会 buffered 到通道、被 plannerLoop 启动时
 	// 消费掉而绕过 Run 的门控 → 种子任务仍误触发首轮。
@@ -1802,16 +1802,16 @@ func (s *Server) seed(t *Task, text string) {
 // origin fact (RelDerivedFrom) so it still traces back to a fact node. Best-effort —
 // a failure just falls back to the normal planner-driven flow.
 func (s *Server) seedFirstIntent(t *Task) {
-	summary := fmt.Sprintf("完成任务目标：%s（任务：%s）", t.Goal, t.Description)
+	summary := fmt.Sprintf("Complete mission objectives: %s (Mission: %s)", t.Goal, t.Description)
 	id, err := t.Store.AddIntent(map[string]any{"summary": summary}, 8, nil, "seed")
 	if err != nil {
-		log.Printf("[seed] task %s: 下发种子意图失败: %v", t.ID, err)
+		log.Printf("[seed] task %s: could not dispatch seed intent: %v", t.ID, err)
 		return
 	}
 	if origin, _ := t.Store.OriginFactID(); origin > 0 {
 		_ = t.Store.Link(origin, db.RelDerivedFrom, id)
 	}
-	log.Printf("[seed] task %s: 已下发种子意图 #%d", t.ID, id)
+	log.Printf("[seed] task %s : seed intent # %d", t.ID, id)
 }
 
 func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
@@ -2382,7 +2382,7 @@ func (s *Server) patchFinding(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !notified && from != *body.Status {
-			log.Printf("[notify] 状态变更事件未登记 finding=%d %s→%s（状态已更新）", id, from, *body.Status)
+			log.Printf("[notify] Status change event unregistered finding= %d %s → %s (state updated)", id, from, *body.Status)
 		}
 	}
 	if body.Severity != nil {
@@ -3360,7 +3360,7 @@ func (s *Server) getTrafficBlob(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", hash+".bin"))
 	if _, err := io.Copy(w, f); err != nil {
-		log.Printf("[traffic] 下载 blob %s 中断：%v", hash, err)
+		log.Printf("[traffic] Download blob %s Interruption: %v", hash, err)
 	}
 }
 
@@ -3841,7 +3841,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 			_, err := ma.Chat(ctx, maTaskID, mainSeg, s.m.Assets(), t.Store, t.Goal, agentMsg, emit, t.Notify, resume, t.NotifyGoal, t.NotifyHint)
 			s.engine.EndLLMCall(t.ID)
 			if err != nil && ctx.Err() == nil {
-				s.engine.emitActivity(t, db.Activity{Worker: "mainagent", Kind: "text", IsError: true, Summary: transcriptErrorSummary("메인 에이전트", err.Error()), MainSeg: segPtr})
+				s.engine.emitActivity(t, db.Activity{Worker: "mainagent", Kind: "text", IsError: true, Summary: transcriptErrorSummary("Main Agent", err.Error()), MainSeg: segPtr})
 			}
 		}()
 		writeJSON(w, 202, map[string]any{"status": "accepted", "mode": "llm"})
@@ -3911,10 +3911,10 @@ func fallbackCommand(msg string) (cmd, text string) {
 	m := strings.TrimSpace(msg)
 	lower := strings.ToLower(m)
 	switch {
-	case strings.HasPrefix(m, "意图") || strings.HasPrefix(m, "의도") || strings.HasPrefix(lower, "intent"):
-		return "intent", strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(m, "意图"), "의도"), "intent"))
-	case strings.HasPrefix(m, "提示") || strings.HasPrefix(m, "힌트") || strings.HasPrefix(lower, "hint"):
-		return "hint", strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(m, "提示"), "힌트"), "hint"))
+	case strings.HasPrefix(m, "意图") || strings.HasPrefix(m, "의도") || strings.HasPrefix(m, "Intent") || strings.HasPrefix(lower, "intent"):
+		return "intent", strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(m, "意图"), "의도"), "Intent"), "intent"))
+	case strings.HasPrefix(m, "提示") || strings.HasPrefix(m, "힌트") || strings.HasPrefix(m, "Hint") || strings.HasPrefix(lower, "hint"):
+		return "hint", strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(m, "提示"), "힌트"), "Hint"), "hint"))
 	default:
 		return "", m
 	}

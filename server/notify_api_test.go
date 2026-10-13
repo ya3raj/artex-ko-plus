@@ -250,7 +250,7 @@ func TestNotifyEndToEndRealtimeDelivery(t *testing.T) {
 	// "SQL注入" 은 입력으로 넣은 취약점 제목이라 카드에 그대로 에코된다(사용자 데이터,
 	// 번역 대상 아님). "높음"·"개요" 는 렌더 라벨이다 — 심각도는 notify.SeverityLabel("high")
 	// 가 내는 "🟠 높음", 요약 머리글은 writeItem 이 붙이는 "**개요**:" 에 각각 들어 있다.
-	for _, want := range []string{"SQL注入", "높음", "개요"} {
+	for _, want := range []string{"SQL注入", "High", "Overview"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("消息正文缺少 %q:\n%s", want, text)
 		}
@@ -363,9 +363,9 @@ func TestNotifyChannelAPICreateValidation(t *testing.T) {
 		// 가 "Webhook 주소가 없습니다"·"Webhook 주소가 올바르지 않습니다" 로 검증한다) 기대
 		// 문자열도 한국어 안정 문구로 맞춘다.
 		{"类型非法", map[string]any{"name": "x", "kind": "nope", "config": map[string]any{}}, "채널 유형이 올바르지 않습니다"},
-		{"缺名称", map[string]any{"kind": notify.KindDingTalk, "config": map[string]any{"webhook": "https://e.com/h"}}, "채널 이름을 입력하세요"},
-		{"缺 webhook", map[string]any{"name": "x", "kind": notify.KindDingTalk, "config": map[string]any{}}, "Webhook 주소가 없습니다"},
-		{"webhook 协议非法", map[string]any{"name": "x", "kind": notify.KindDingTalk, "config": map[string]any{"webhook": "file:///etc/passwd"}}, "Webhook 주소가 올바르지 않습니다"},
+		{"缺名称", map[string]any{"kind": notify.KindDingTalk, "config": map[string]any{"webhook": "https://e.com/h"}}, "Enter your channel name"},
+		{"缺 webhook", map[string]any{"name": "x", "kind": notify.KindDingTalk, "config": map[string]any{}}, "There is no Webhook address."},
+		{"webhook 协议非法", map[string]any{"name": "x", "kind": notify.KindDingTalk, "config": map[string]any{"webhook": "file:///etc/passwd"}}, "Webhook address is invalid"},
 		{"模式非法", map[string]any{"name": "x", "kind": notify.KindDingTalk, "mode": "sometimes", "config": map[string]any{"webhook": "https://e.com/h"}}, "발송 모드가 올바르지 않습니다"},
 	}
 	for _, tc := range cases {
@@ -444,7 +444,7 @@ func TestNotifyDigestBatchesMultipleFindingsIntoOneMessage(t *testing.T) {
 	text := markdownText(t, hook.last(t))
 	// 시간창이 있는 다이제스트 머리말은 markdown.go 가 "**최근 N분간 신규 취약점 N건**"
 	// 으로 렌더한다(digestInterval 기본 30분이라 WindowMinutes>0).
-	if !strings.Contains(text, "최근") || !strings.Contains(text, "신규 취약점 3건") {
+	if !strings.Contains(text, "최근") || !strings.Contains(text, "3 new findings") {
 		t.Fatalf("汇总消息缺少条数/时间窗文案:\n%s", text)
 	}
 	for i := 1; i <= 3; i++ {
@@ -507,7 +507,7 @@ func TestNotifyStatusChangeDelivery(t *testing.T) {
 		text := markdownText(t, hook.body(t, i))
 		// 상태 변경 카드는 markdown.go 가 "**상태 변경**: %s → %s" 로, 상태값은
 		// notify.StatusLabel 이 렌더한다(fixed → "수정됨").
-		if strings.Contains(text, "상태 변경") && strings.Contains(text, "수정됨") {
+		if strings.Contains(text, "Status change") && strings.Contains(text, "Fixed") {
 			found = true
 		}
 	}
@@ -739,7 +739,7 @@ func TestNotifyNoDeepLinkWithoutBaseURL(t *testing.T) {
 	// 상세 링크 머리글은 markdown.go 가 "[상세 보기](URL)" 로 렌더한다 — 외부 주소가
 	// 없으면 이 링크가 아예 나오지 않아야 한다(옛 중국어 "查看详情" 를 검사하면 라벨이
 	// 한국어로 바뀐 지금은 항상 통과해 회귀를 못 잡는다).
-	if text := markdownText(t, body); strings.Contains(text, "상세 보기") {
+	if text := markdownText(t, body); strings.Contains(text, "View details") {
 		t.Fatalf("未配外部地址时不该出现详情链接:\n%s", text)
 	}
 }
@@ -800,7 +800,7 @@ func TestNotifyDigestSegmentsAndDefersRemainder(t *testing.T) {
 	}
 	// 消息正文必须如实告知还有多少条没包含在本条里。
 	// 분절 안내는 markdown.go 가 "(이 메시지에는 앞 N건만 … 나머지 N건은 다음 메시지에서 …)" 로 렌더한다.
-	if text := markdownText(t, hook.last(t)); !strings.Contains(text, "나머지") {
+	if text := markdownText(t, hook.last(t)); !strings.Contains(text, "remaining") {
 		t.Fatalf("消息应说明还有条目未包含在本条:\n%.400s", text)
 	}
 

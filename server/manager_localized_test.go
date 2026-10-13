@@ -3,7 +3,7 @@ package server
 import "testing"
 
 // manager.go 의 워크 에이전트 수 설정 검증 오류 문구를 한국어로 유지하는 회귀 방어
-// 테스트다. 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를
+// 테스트다. 한국어 판정은 F3a 가 만든 assertEnglishError(한글 포함·중국어 한자 0)를
 // 재사용한다. SetWorkers(n<=0) 분기는 m.pg.SetSetting 에 닿기 전에 반환하므로 DB 없는
 // 이 호스트에서 빈 Manager 로 실제 구동할 수 있다. 누군가 이 리터럴을 중국어로
 // 되돌리면 이 테스트가 실패한다.
@@ -17,5 +17,5 @@ func TestSetWorkersErrorLocalized(t *testing.T) {
 	if err == nil {
 		t.Fatal("워크 에이전트 수 0 은 거부되어야 합니다")
 	}
-	assertKoreanError(t, "set_workers_nonpositive", err.Error())
+	assertEnglishError(t, "set_workers_nonpositive", err.Error())
 }

@@ -40,17 +40,17 @@ func (emailChannel) DestinationKeys() []string { return []string{"host", "port",
 
 func (emailChannel) Validate(cfg map[string]any) error {
 	if cfgString(cfg, "host") == "" {
-		return errors.New("SMTP 서버 주소가 없습니다")
+		return errors.New("There is no SMTP server address")
 	}
 	port := cfgInt(cfg, "port")
 	if port <= 0 || port > 65535 {
-		return errors.New("SMTP 포트가 올바르지 않습니다 (1-65535 범위여야 합니다)")
+		return errors.New("The SMTP port is invalid (it must be in range 1-65535)")
 	}
 	if cfgString(cfg, "from") == "" {
-		return errors.New("발신자 주소가 없습니다")
+		return errors.New("sender address is required")
 	}
 	if len(cfgStrings(cfg, "to")) == 0 {
-		return errors.New("수신자 주소가 최소 하나 필요합니다")
+		return errors.New("Recipient address is required at least one")
 	}
 	return nil
 }
@@ -83,7 +83,7 @@ func (c emailChannel) Send(ctx context.Context, cfg map[string]any, m Message) (
 	if !implicitTLS {
 		if ok, _ := client.Extension("STARTTLS"); ok {
 			if err := client.StartTLS(&tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}); err != nil {
-				return 0, fmt.Errorf("STARTTLS 실패: %w", err)
+				return 0, fmt.Errorf("STARTTLS failure: %w", err)
 			}
 		}
 	}
@@ -93,28 +93,28 @@ func (c emailChannel) Send(ctx context.Context, cfg map[string]any, m Message) (
 			// 这是**正确**的安全行为，不能绕过，但需要把原因翻译清楚——
 			// 否则使用者只会看到「unencrypted connection」而不知道该怎么办。
 			if strings.Contains(err.Error(), "unencrypted connection") {
-				return 0, Permanent(fmt.Errorf("자격 증명 전송을 거부했습니다: 연결이 암호화되지 않았습니다. TLS 를 켜거나, 465 포트(암시적 TLS)를 사용하거나, 「TLS 사용」을 체크하세요 (%w)", err))
+				return 0, Permanent(fmt.Errorf("Denied the transfer of credentials: The connection is not encrypted. Turn on TLS, use port 465 (Improbe TLS), or check \"Enable TLS\" (%w)", err))
 			}
-			return 0, Permanent(fmt.Errorf("SMTP 인증 실패: %w", err))
+			return 0, Permanent(fmt.Errorf("SMTP authentication failed: %w", err))
 		}
 	}
 	if err := client.Mail(from); err != nil {
-		return 0, smtpStageError(fmt.Sprintf("발신자 %s 주소가 거부되었습니다", from), err)
+		return 0, smtpStageError(fmt.Sprintf("Caller %s address rejected", from), err)
 	}
 	for _, rcpt := range to {
 		if err := client.Rcpt(rcpt); err != nil {
-			return 0, smtpStageError(fmt.Sprintf("수신자 %s 주소가 거부되었습니다", rcpt), err)
+			return 0, smtpStageError(fmt.Sprintf("Recipient %s address rejected", rcpt), err)
 		}
 	}
 	w, err := client.Data()
 	if err != nil {
-		return 0, fmt.Errorf("SMTP DATA 실패: %w", err)
+		return 0, fmt.Errorf("SMTP DATA failed: %w", err)
 	}
 	if _, err := w.Write([]byte(msg)); err != nil {
-		return 0, fmt.Errorf("메일 본문 쓰기 실패: %w", err)
+		return 0, fmt.Errorf("Failed to write mail body: %w", err)
 	}
 	if err := w.Close(); err != nil {
-		return 0, fmt.Errorf("메일 제출 실패: %w", err)
+		return 0, fmt.Errorf("Email submission failed: %w", err)
 	}
 	// Quit 失败不影响「邮件已被服务器接收」这个事实，因此忽略其错误。
 	_ = client.Quit()
@@ -145,13 +145,13 @@ func emailDial(ctx context.Context, addr, host string, implicitTLS bool) (*smtp.
 		conn, err = d.DialContext(ctx, "tcp", addr)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("SMTP 서버 연결 실패: %w", err)
+		return nil, fmt.Errorf("Failed to connect to SMTP server: %w", err)
 	}
 	_ = conn.SetDeadline(time.Now().Add(emailSessionTimeout))
 	client, err := smtp.NewClient(conn, host)
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("SMTP 핸드셰이크 실패: %w", err)
+		return nil, fmt.Errorf("SMTP handshake failure: %w", err)
 	}
 	return client, nil
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrSideBusy = errors.New("当前会话已有旁路问题正在回答")
-var ErrSideParentGone = errors.New("旁路父会话已删除或归档")
+var ErrSideBusy = errors.New("The current session has bypass questions being answered")
+var ErrSideParentGone = errors.New("Bystander session deleted or archived")
 
 // Lock the real parent before the side session, also covering soft task/intent
 // deletion. A delayed checkpoint cannot recreate data after archive cleanup.
@@ -173,7 +173,7 @@ func (d *DB) StartSideRequest(ctx context.Context, s sidequestion.Snapshot, clie
 	e, err := scanSide(tx.QueryRowContext(ctx, `SELECT `+sideCols+` FROM side_question_requests WHERE session_key=$1 AND generation=$2 AND client_id=$3`, s.Parent.Key(), generation, clientID))
 	if err == nil {
 		if e.Question != question {
-			return nil, false, fmt.Errorf("同一请求 ID 不能用于不同问题")
+			return nil, false, fmt.Errorf("The same request ID cannot be used for different issues")
 		}
 		return &e, false, tx.Commit()
 	}

@@ -16,7 +16,7 @@ import (
 // DB 시드는 wrapup_prompt / task_timeout_wrapup_prompt 를 빈 문자열로 두고(db/db.go 의
 // builtin 에이전트 INSERT 는 이 컬럼을 채우지 않는다), 비어 있으면 이 상수로 떨어진다.
 // 즉 이 상수들이 wrap-up 문구의 유일한 원천이다.
-func TestWrapupPromptsLocalizedToKorean(t *testing.T) {
+func TestWrapupPromptsLocalizedToEnglish(t *testing.T) {
 	all := map[string]string{
 		"settleWrapUpPrompt":        settleWrapUpPrompt,
 		"plannerWrapUpDefault":      plannerWrapUpDefault,
@@ -36,7 +36,7 @@ func TestWrapupPromptsLocalizedToKorean(t *testing.T) {
 	}
 
 	for name, p := range all {
-		if !hasScript(p, unicode.Hangul) {
+		if !hasScript(p, unicode.Latin) {
 			t.Errorf("%s: 한글이 전혀 없어 한국어화되지 않았다", name)
 		}
 		// 도구 이름은 ASCII, 한글은 Hangul 블록이라 번역이 끝났다면 CJK 한자가 하나도 없어야 한다.
@@ -56,11 +56,11 @@ func TestWrapupPromptsLocalizedToKorean(t *testing.T) {
 		}
 	}
 	mustContain("settleWrapUpPrompt", settleWrapUpPrompt,
-		"insert_assets", "record_fact", "report_finding", "한 문장", "순수 텍스트")
+		"insert_assets", "record_fact", "report_finding", "one sentence", "plain text")
 	mustContain("workerTaskTimeoutDefault", workerTaskTimeoutDefault,
-		"insert_assets", "record_fact", "report_finding", "한 문장", "순수 텍스트")
-	mustContain("genericWrapUpDefault", genericWrapUpDefault, "한 문장", "순수 텍스트")
-	mustContain("mainAgentWrapUpDefault", mainAgentWrapUpDefault, "한 문장", "순수 텍스트")
+		"insert_assets", "record_fact", "report_finding", "one sentence", "plain text")
+	mustContain("genericWrapUpDefault", genericWrapUpDefault, "one sentence", "plain text")
+	mustContain("mainAgentWrapUpDefault", mainAgentWrapUpDefault, "one sentence", "plain text")
 	// planner 는 요약 문장을 내지 않고(판정만 하고 종료) 의도·목표·할일 도구를 유지한다.
 	mustContain("plannerWrapUpDefault", plannerWrapUpDefault, "add_intent", "prove_goal", "TodoWrite")
 	mustContain("plannerTaskTimeoutDefault", plannerTaskTimeoutDefault, "prove_goal")

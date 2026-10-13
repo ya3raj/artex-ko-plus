@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/config";
+
 import * as React from "react";
 
 import Link from "next/link";
@@ -42,60 +44,49 @@ import type { LLMProfile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STATUS: Record<AssessmentStatus, string> = {
-  queued: "대기 중",
-  running: "진단 중",
-  completed: "도구 진단 완료",
-  failed: "진단 실패",
-  interrupted: "진단 중단",
+  queued: "Queued", running: "Assessing", completed: "Tool assessment completed",
+  failed: "Assessment failed", interrupted: "Assessment interrupted",
 };
 const REVIEW_STATUS: Record<CandidateReviewStatus, string> = {
-  queued: "검토 대기 중",
-  running: "AI 검토 중",
-  partial: "일부 검토 완료",
-  completed: "후보 검토 완료",
-  cancelled: "검토 중지됨",
-  interrupted: "검토 중단됨",
-  error: "검토 오류",
+  queued: "Awaiting review", running: "AI review in progress", partial: "Partially reviewed",
+  completed: "Candidate review completed", cancelled: "Review stopped",
+  interrupted: "Review interrupted", error: "Review error",
 };
 const CANDIDATE_STATUS: Record<CandidateCheckpoint["status"], string> = {
-  pending: "미검토",
-  running: "검토 중",
-  error: "재시도 필요",
-  confirmed_static: "정적 근거 확인",
-  rejected: "후보 기각",
-  insufficient_evidence: "근거 부족",
-  auth_required: "인증 필요",
-  needs_dynamic_validation: "동적 검증 필요",
+  pending: "Not reviewed", running: "Reviewing", error: "Retry required",
+  confirmed_static: "Static evidence confirmed", rejected: "Candidate rejected",
+  insufficient_evidence: "Insufficient evidence", auth_required: "Authentication required",
+  needs_dynamic_validation: "Dynamic validation required",
 };
 const KINDS: Record<AssessmentKind, { title: string; tool: string; description: string }> = {
   api: {
-    title: "API 진단",
+    title: "API Diagnostics",
     tool: "Schemathesis",
-    description: "명세·URL·HAR에서 API 요청을 등록하고, 선택한 요청의 응답·입력 처리를 확인합니다.",
+    description: "Register the API request in specification, URL, and HAR, and check the response and input processing of the selected request.",
   },
   source: {
-    title: "소스 코드 진단",
+    title: "Source Code Diagnostics",
     tool: "Semgrep",
-    description: "소스 ZIP을 등록해 Java·Python·JavaScript·TypeScript 코드의 의심 위치를 분석합니다.",
+    description: "Register the source ZIP to analyze the suspicious location of Java, Python, JavaScript, and TypeScript code.",
   },
 };
 const MAX_OPERATIONS = 40;
 const REVIEW_PROFILE_STORAGE_KEY = "offensive_candidate_review_profile_id";
 const INPUT_MODES: Record<ApiInputMode, { title: string; description: string; addressLabel: string }> = {
   openapi: {
-    title: "OpenAPI 명세",
-    description: "명세에 정의된 API 요청과 응답 형식을 검사합니다.",
-    addressLabel: "API 기본 주소",
+    title: "OpenAPI Specification",
+    description: "Checks the API request and response format defined in the specification.",
+    addressLabel: "API Default Address",
   },
   url: {
-    title: "URL 탐색",
-    description: "시작 주소의 링크 등에서 API 후보 경로를 찾습니다.",
-    addressLabel: "탐색 시작 주소",
+    title: "URL navigation",
+    description: "Find the API candidate path for the link to the startup address, etc.",
+    addressLabel: "Start navigation Address",
   },
   har: {
-    title: "HAR 업로드",
-    description: "브라우저에서 저장한 요청 기록에서 API 후보 경로를 찾습니다.",
-    addressLabel: "HAR에서 선택할 API 주소·경로",
+    title: "HAR Upload",
+    description: "Locate the API candidate path in the request history saved by the browser.",
+    addressLabel: "API address/path to choose from HAR",
   },
 };
 const FILE_INPUTS = {
@@ -103,22 +94,22 @@ const FILE_INPUTS = {
     maxMiB: 20,
     accept: ".zip",
     extension: /\.zip$/i,
-    label: "소스 ZIP · 최대 20 MiB",
-    error: "소스 코드를 담은 ZIP 파일을 선택하세요.",
+    label: "Source ZIP · Up to 20 MiB",
+    error: "Select the ZIP file with the source code.",
   },
   openapi: {
     maxMiB: 8,
     accept: ".json,.yaml,.yml",
     extension: /\.(json|ya?ml)$/i,
-    label: "OpenAPI 명세 파일 · JSON / YAML, 최대 8 MiB",
-    error: "OpenAPI JSON 또는 YAML 파일을 선택하세요.",
+    label: "OpenAPI Specification File · JSON / YAML, up to 8 MiB",
+    error: "Select the OpenAPI JSON or YAML file.",
   },
   har: {
     maxMiB: 16,
     accept: ".har,.json",
     extension: /\.(har|json)$/i,
-    label: "HAR 파일 · HAR / JSON, 최대 16 MiB",
-    error: "브라우저 요청 기록을 담은 HAR 또는 JSON 파일을 선택하세요.",
+    label: "HAR file · HAR / JSON, up to 16 MiB",
+    error: "Select a HAR or JSON file with a browser request history.",
   },
 };
 
@@ -128,10 +119,10 @@ function isDiscoveredApi(target?: AssessmentTarget) {
 
 function candidateNotice(run: AssessmentRun) {
   if (run.kind === "source")
-    return "정적 분석 결과는 실행 흐름과 입력 조건 검토가 필요합니다. 후보 발견은 동적 재현 성공을 뜻하지 않습니다.";
+    return "Static analysis results require a review of execution flow and input conditions. Candidate discovery does not mean dynamic reproduction success.";
   if (isDiscoveredApi(run.target_snapshot))
-    return "서버 오류 응답은 검토할 후보이며 취약점 확정을 뜻하지 않습니다. 명세가 없으므로 응답 형식의 일치 여부는 검사하지 않았습니다. 요청·응답과 실제 영향을 검토하세요.";
-  return "명세 위반이나 비정상 응답만으로 보안 취약점이 확정되지는 않습니다. 요청·응답과 실제 영향을 검토해야 합니다.";
+    return "The server error response is a candidate to review and does not mean to confirm the vulnerability. There are no specifications, so we have not checked for matching the response format. Please review the request, response and actual impact.";
+  return "Security vulnerabilities are not confirmed by a specification violation or an abnormal response. Requests, responses and actual effects should be reviewed.";
 }
 
 function DiscoveryDetails({ discovery }: { discovery?: AssessmentDiscovery }) {
@@ -139,7 +130,7 @@ function DiscoveryDetails({ discovery }: { discovery?: AssessmentDiscovery }) {
   return (
     <div className="space-y-2 text-muted-foreground text-xs">
       {discovery.summary && <p>{discovery.summary}</p>}
-      {typeof discovery.requests === "number" && <p>탐색 요청: {discovery.requests}회</p>}
+      {typeof discovery.requests === "number" && <p>Navigation request: {discovery.requests}Hoe</p>}
       {!!discovery.warnings?.length && (
         <ul className="list-disc space-y-1 pl-5">
           {[...new Set(discovery.warnings)].map((warning) => (
@@ -170,9 +161,9 @@ function isReviewActive(review: CandidateReview | null) {
 }
 
 function formatDuration(milliseconds: number) {
-  if (milliseconds < 1000) return milliseconds > 0 ? "1초 미만" : "0초";
+  if (milliseconds < 1000) return milliseconds > 0 ? "Less than one second" : "Zero Seconds";
   const seconds = Math.round(milliseconds / 1000);
-  return seconds < 60 ? `${seconds}초` : `${Math.floor(seconds / 60)}분 ${seconds % 60}초`;
+  return seconds < 60 ? `${seconds}Cho` : `${Math.floor(seconds / 60)}Min ${seconds % 60}Cho`;
 }
 
 function CandidateReviewCard({ candidate }: { candidate: CandidateCheckpoint }) {
@@ -189,7 +180,8 @@ function CandidateReviewCard({ candidate }: { candidate: CandidateCheckpoint }) 
         <span className="font-medium">{candidate.title}</span>
         {result && candidate.attempt_count === 0 && (
           <Badge variant="outline" className="ml-2">
-            근거 자동 분류
+
+            Ground automatic classification
           </Badge>
         )}
         {candidate.file && (
@@ -201,16 +193,16 @@ function CandidateReviewCard({ candidate }: { candidate: CandidateCheckpoint }) 
         {result?.summary && <span className="mt-2 block whitespace-pre-wrap break-words">{result.summary}</span>}
       </summary>
       <div className="mt-3 space-y-3 text-sm">
-        <p className="break-all text-muted-foreground text-xs">후보 ID: {candidate.id}</p>
+        <p className="break-all text-muted-foreground text-xs">Candidate ID: {candidate.id}</p>
         {result && (
           <>
             <div>
-              <p className="font-medium">판정 근거</p>
+              <p className="font-medium">Judgment grounds</p>
               <p className="mt-1 whitespace-pre-wrap break-words">{result.rationale}</p>
             </div>
             {!!result.evidence_refs?.length && (
               <div>
-                <p className="font-medium">인용한 근거</p>
+                <p className="font-medium">Citations</p>
                 <ul className="mt-1 list-disc space-y-1 pl-5 font-mono text-xs">
                   {[...new Set(result.evidence_refs)].map((reference) => (
                     <li key={reference} className="break-all">
@@ -222,7 +214,7 @@ function CandidateReviewCard({ candidate }: { candidate: CandidateCheckpoint }) 
             )}
             {!!result.limitations?.length && (
               <div>
-                <p className="font-medium">추가 확인 · 판단 한계</p>
+                <p className="font-medium">Additional confirmation and judgment limits</p>
                 <ul className="mt-1 list-disc space-y-1 pl-5 text-muted-foreground text-xs">
                   {[...new Set(result.limitations)].map((limitation) => (
                     <li key={limitation}>{limitation}</li>
@@ -238,13 +230,14 @@ function CandidateReviewCard({ candidate }: { candidate: CandidateCheckpoint }) 
         {!result && !candidate.last_error && (
           <p className="text-muted-foreground text-xs">
             {candidate.status === "running"
-              ? "이 후보의 근거를 검토하고 있습니다. 판정이 끝나면 바로 저장됩니다."
-              : "다음 검토에서 처리할 후보입니다."}
+              ? "We are reviewing the rationale for this candidate, and it will be saved as soon as the verdict is made."
+              : "Candidates to deal with in the next review."}
           </p>
         )}
         <p className="text-muted-foreground text-xs">
-          검토 시도 {candidate.attempt_count}회
-          {candidate.finished_at ? ` · 저장 ${formatTime(candidate.finished_at)}` : ""}
+
+          Try Review {candidate.attempt_count}Hoe
+          {candidate.finished_at ? ` · Storage ${formatTime(candidate.finished_at)}` : ""}
         </p>
       </div>
     </details>
@@ -254,7 +247,7 @@ function CandidateReviewCard({ candidate }: { candidate: CandidateCheckpoint }) 
 function formatTime(value?: string) {
   if (!value) return "—";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("ko-KR");
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(resolveLocale());
 }
 
 function evidenceText(value: unknown): string {
@@ -263,7 +256,7 @@ function evidenceText(value: unknown): string {
 }
 
 function errorText(value: unknown): string {
-  return value instanceof Error ? value.message : "요청을 완료하지 못했습니다. 잠시 후 다시 시도하세요.";
+  return value instanceof Error ? value.message : "The request was not completed. Please try again in a moment.";
 }
 
 function RunStatus({ run }: { run: AssessmentRun }) {
@@ -401,7 +394,7 @@ export default function OffensiveAssessmentsPage() {
         }
         setPollError("");
       } catch (cause) {
-        if (alive) setPollError(`실행 상태 갱신 실패: ${errorText(cause)}`);
+        if (alive) setPollError(`Execution status update failed: ${errorText(cause)}`);
       } finally {
         polling = false;
       }
@@ -437,7 +430,7 @@ export default function OffensiveAssessmentsPage() {
         if (isReviewActive(result.review)) timer = setTimeout(() => void loadReview(), 2000);
       } catch (cause) {
         if (!alive || seq !== reviewSeq.current || selectedRunRef.current !== selectedRunId) return;
-        setReviewError(`AI 검토 상태를 불러오지 못했습니다: ${errorText(cause)}`);
+        setReviewError(`Failed to load AI review status: ${errorText(cause)}`);
         timer = setTimeout(() => void loadReview(), 5000);
       } finally {
         if (alive && seq === reviewSeq.current) setReviewLoading(false);
@@ -458,10 +451,10 @@ export default function OffensiveAssessmentsPage() {
   const fileInput = kind === "source" ? FILE_INPUTS.source : FILE_INPUTS[inputMode === "har" ? "har" : "openapi"];
   const isUrlRegistration = kind === "api" && inputMode === "url";
   const RegisterIcon = isUrlRegistration ? GlobeIcon : UploadIcon;
-  const registerLabel = isUrlRegistration ? "URL에서 API 찾기" : "업로드하고 대상 등록";
-  const registeringLabel = isUrlRegistration ? "URL에서 경로 탐색 중…" : "업로드·확인 중…";
+  const registerLabel = isUrlRegistration ? "Find the API in the URL" : "Upload and register as a target";
+  const registeringLabel = isUrlRegistration ? "Searching for paths in URLs..." : "Uploading/ verifying...";
   const discoveredApi = isDiscoveredApi(target);
-  const startLabel = discoveredApi ? "탐색한 요청 검사 시작" : `${KINDS[kind].title} 시작`;
+  const startLabel = discoveredApi ? "Start checking the requested you've been searched" : `${KINDS[kind].title} Start`;
   React.useEffect(() => {
     if (!targets.some((item) => item.id === targetId)) setTargetId(targets[0]?.id ?? "");
   }, [targets, targetId]);
@@ -493,10 +486,10 @@ export default function OffensiveAssessmentsPage() {
   const reviewProgress = selectedReview?.total
     ? selectedReview.reviewed
     : Number(selectedReview?.status === "completed");
-  let reviewActionLabel = "후보 AI 검토 시작";
-  if (selectedReview) reviewActionLabel = `남은 후보 ${Math.min(batchSize, pendingCandidates)}건 이어서 검토`;
-  if (reviewActive) reviewActionLabel = "후보 검토 진행 중";
-  if (reviewing) reviewActionLabel = "검토 시작 중…";
+  let reviewActionLabel = "Candidate AI review begins";
+  if (selectedReview) reviewActionLabel = `Remaining Candidates ${Math.min(batchSize, pendingCandidates)}Go ahead and review`;
+  if (reviewActive) reviewActionLabel = "Candidate Review in progress";
+  if (reviewing) reviewActionLabel = "Starting a review...";
 
   const changeKind = (next: AssessmentKind) => {
     if (next === kind) return;
@@ -524,12 +517,12 @@ export default function OffensiveAssessmentsPage() {
     setUploadError("");
     setUploadNotice("");
     if (!uploadName.trim() || uploadName.trim().length > 100) {
-      setUploadError("대상 이름은 1~100자로 입력하세요.");
+      setUploadError("Please enter the target name in 1 to 100 characters.");
       return;
     }
     if (needsUploadFile && uploadFile) {
       if (uploadFile.size > fileInput.maxMiB * 1024 * 1024) {
-        setUploadError(`파일은 ${fileInput.maxMiB} MiB 이하여야 합니다.`);
+        setUploadError(`The File ${fileInput.maxMiB} It has to be MiB.`);
         return;
       }
       if (!fileInput.extension.test(uploadFile.name)) {
@@ -544,7 +537,7 @@ export default function OffensiveAssessmentsPage() {
           throw new Error("invalid URL");
         }
       } catch {
-        setUploadError("HTTP(S) API 주소를 입력하세요. 주소에 계정·비밀번호·쿼리·해시를 넣지 마세요.");
+        setUploadError("Please enter your HTTP(S) API address. Do not include your account, password, query, or sash in the address.");
         return;
       }
       if (inputMode === "har" && harOrigin.trim()) {
@@ -561,7 +554,7 @@ export default function OffensiveAssessmentsPage() {
             throw new Error("invalid origin");
           }
         } catch {
-          setUploadError("HAR 원본 주소는 HTTP(S) 서버 주소와 포트만 입력하세요. 경로·쿼리는 넣지 마세요.");
+          setUploadError("Please enter only the HTTP(S) server address and port for the original HAR address. Do not enter a path or query.");
           return;
         }
       }
@@ -584,7 +577,7 @@ export default function OffensiveAssessmentsPage() {
       setUploadFile(null);
       setUploadName("");
       if (uploadFileRef.current) uploadFileRef.current.value = "";
-      setUploadNotice(`“${uploaded.name}” 등록 완료. 아래에서 범위를 확인하고 진단을 시작하세요.`);
+      setUploadNotice(`“${uploaded.name}“Registered complete. Check the range below and start the diagnosis.`);
     } catch (cause) {
       setUploadError(errorText(cause));
     } finally {
@@ -707,13 +700,13 @@ export default function OffensiveAssessmentsPage() {
             href="/offensive/"
             className="inline-flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground"
           >
-            <ArrowLeftIcon className="size-3" /> 진단 개요
+            <ArrowLeftIcon className="size-3" />  Diagnostic Overview
           </Link>
-          <h1 className="font-semibold text-xl tracking-tight">API · 소스 코드 진단</h1>
-          <p className="text-muted-foreground text-sm">대상 등록·선택 → 도구 진단 → 후보별 AI 검토 → 저장·이어하기</p>
+          <h1 className="font-semibold text-xl tracking-tight">API · Source Code Diagnostics</h1>
+          <p className="text-muted-foreground text-sm">Target registration·Select → Tool diagnosis → AI review by candidate → Save·Go ahead</p>
         </div>
         <Button variant="outline" size="sm" disabled={loading || uploading || starting} onClick={() => void refresh()}>
-          <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} /> 새로고침
+          <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />  Refresh
         </Button>
       </div>
 
@@ -725,8 +718,8 @@ export default function OffensiveAssessmentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">1. 진단 대상 등록·선택</CardTitle>
-          <CardDescription>직접 등록한 대상이나 설치된 실습 예제를 선택해서 진단합니다.</CardDescription>
+          <CardTitle className="text-base">1. Registration and selection of diagnostic subjects</CardTitle>
+          <CardDescription>Select the directly registered target or installed practice example to diagnose.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
@@ -751,7 +744,7 @@ export default function OffensiveAssessmentsPage() {
                       <Icon className="size-4" />
                       {info.title}
                     </span>
-                    <Badge variant="outline">{loading && !catalog ? "확인 중" : `등록 대상 ${count}개`}</Badge>
+                    <Badge variant="outline">{loading && !catalog ? "Confirming" : `Enrollment ${count}Dog`}</Badge>
                   </div>
                   <span className="text-muted-foreground text-sm">{info.description}</span>
                   <span className="font-medium text-xs">{info.tool} + ARTEX</span>
@@ -762,11 +755,12 @@ export default function OffensiveAssessmentsPage() {
           {catalogError && (
             <Alert>
               <AlertDescription>
-                <p className="font-medium">진단 환경에 연결하지 못했습니다.</p>
+                <p className="font-medium">Failed to connect to diagnostic environment.</p>
                 <p className="mt-1 break-words">{catalogError}</p>
                 <p className="mt-1">
-                  로컬 진단 환경을 준비한 뒤 새로고침하세요. 설치 방법은 배포 문서의 API·소스 코드 진단 가이드를
-                  참고하세요.
+
+                  Prepare the local diagnostic environment and refresh it. For installation instructions, please refer to the API and Source Code Diagnostic Guide in the Deployment Document.
+                  Please note.
                 </p>
               </AlertDescription>
             </Alert>
@@ -778,11 +772,11 @@ export default function OffensiveAssessmentsPage() {
           )}
           <form onSubmit={(event) => void registerTarget(event)} className="space-y-3 rounded-lg border p-4">
             <div className="flex items-center gap-2 font-medium text-sm">
-              <RegisterIcon className="size-4" /> 내 {kind === "api" ? "API" : "소스 코드"} 등록
+              <RegisterIcon className="size-4" />  My {kind === "api" ? "API" : "Source code"}  Register
             </div>
             {kind === "api" && (
               <fieldset className="space-y-2" disabled={uploading}>
-                <legend className="mb-2 text-sm">API 요청을 준비하는 방법</legend>
+                <legend className="mb-2 text-sm">How to prepare API requests</legend>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {(["openapi", "url", "har"] as const).map((mode) => (
                     <button
@@ -804,12 +798,12 @@ export default function OffensiveAssessmentsPage() {
             )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor={uploadNameId}>대상 이름</Label>
+                <Label htmlFor={uploadNameId}>Target name</Label>
                 <Input
                   id={uploadNameId}
                   value={uploadName}
                   onChange={(event) => setUploadName(event.target.value)}
-                  placeholder={kind === "api" ? "예: 주문 API 개발 서버" : "예: 주문 서비스 소스"}
+                  placeholder={kind === "api" ? "Example: Order API Development Server" : "Example: Order Service Source"}
                   required
                   maxLength={100}
                   disabled={uploading}
@@ -833,21 +827,22 @@ export default function OffensiveAssessmentsPage() {
               )}
               {kind === "api" && inputMode === "har" && (
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor={harOriginId}>HAR 원본 주소 · 주소가 다른 경우</Label>
+                  <Label htmlFor={harOriginId}>If the original address / address of HAR is different</Label>
                   <Input
                     id={harOriginId}
                     type="url"
                     value={harOrigin}
                     onChange={(event) => setHarOrigin(event.target.value)}
-                    placeholder="예: http://localhost:18888"
+                    placeholder="Example: http://localhost:18888"
                     maxLength={2048}
                     disabled={uploading}
                     autoComplete="off"
                   />
                   <p className="text-muted-foreground text-xs">
-                    브라우저의 localhost 요청을 가져오려면 원본 주소에 localhost 주소, 위 API 주소에
-                    host.docker.internal 주소를 입력하세요. 같은 경로를 진단 서버에서 접근할 주소로 연결합니다. 같으면
-                    비워 두세요.
+
+                    To get your browser's localhost request, go to the original address to the localhost address, to the API address above.
+                    Enter the host.docker.internal address. Connect the same path to the address to be accessed by the diagnostic server.
+                    Leave it empty.
                   </p>
                 </div>
               )}
@@ -872,19 +867,21 @@ export default function OffensiveAssessmentsPage() {
             </div>
             <p className="text-muted-foreground text-xs">
               {kind === "api"
-                ? "진단할 권한이 있는 주소를 입력하세요. 이 컴퓨터의 API는 localhost 대신 host.docker.internal을 사용합니다. 등록한 GET·HEAD 요청을 선택해 실행합니다."
-                : "Java·Python·JavaScript·TypeScript 소스를 분석합니다. 업로드한 코드는 실행하지 않습니다. .env·인증서·비밀 키와 의존성 폴더는 ZIP에서 제외하세요."}
+                ? "Enter the address that you have permission to diagnose. The API on this computer uses host.docker.internal instead of localhost. Select the registered GET/HEAD request to execute it."
+                : "Analyze Java·Python·JavaScript·TypeScript sources. Uploaded code does not execute. .env·Certificate·Secret key and dependency folders are excluded from ZIP."}
             </p>
             {kind === "api" && inputMode === "url" && (
               <p className="text-muted-foreground text-xs">
-                같은 서버·경로 범위에서 공개된 페이지를 제한적으로 탐색합니다. 로그인 뒤의 요청이나 JavaScript로
-                생성되는 API는 HAR 업로드로 보완하세요. 찾은 경로가 모두 API인 것은 아닙니다.
+
+                Restrictively browse public pages on the same server and path range. Requests after login or JavaScript
+                Complement the generated API with HAR uploads. Not all of the paths found are API.
               </p>
             )}
             {kind === "api" && inputMode === "har" && (
               <p className="text-muted-foreground text-xs">
-                입력한 서버·경로에 해당하는 요청만 가져옵니다. HAR의 쿠키·인증 헤더와 요청 본문은 재사용하지 않습니다.
-                진단에 필요한 Bearer 토큰은 대상 등록 후 별도로 입력하세요.
+
+                Only the requested corresponding to the server and path entered is received. HAR's cookie/authentication headers and request body are not reused.
+                Enter the Bearer token required for diagnosis separately after registering as a target.
               </p>
             )}
             {uploadError && (
@@ -914,12 +911,13 @@ export default function OffensiveAssessmentsPage() {
             </Button>
             {uploading && kind === "api" && inputMode === "url" && (
               <p role="status" className="text-muted-foreground text-xs">
-                공개된 경로와 응답을 확인하고 있습니다. 탐색에는 최대 약 30초가 걸릴 수 있습니다.
+
+                We're checking the public route and response. Navigation can take up to about thirty seconds.
               </p>
             )}
           </form>
           <div className="space-y-2">
-            <Label htmlFor={targetSelectId}>진단할 대상</Label>
+            <Label htmlFor={targetSelectId}>What to diagnose</Label>
             <select
               id={targetSelectId}
               value={targetId}
@@ -927,27 +925,27 @@ export default function OffensiveAssessmentsPage() {
               disabled={uploading || starting || !targets.length}
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
-              {!targets.length && <option value="">먼저 진단 대상을 등록하세요</option>}
+              {!targets.length && <option value="">Register your diagnostics first</option>}
               {targets.some((item) => item.origin === "upload") && (
-                <optgroup label="내가 등록한 대상">
+                <optgroup label="Targets I registered">
                   {targets
                     .filter((item) => item.origin === "upload")
                     .map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
-                        {item.ready ? "" : " (준비 필요)"}
+                        {item.ready ? "" : " (Need to be prepared)"}
                       </option>
                     ))}
                 </optgroup>
               )}
               {targets.some((item) => item.origin !== "upload") && (
-                <optgroup label="설치된 실습 예제">
+                <optgroup label="Installed Practice Examples">
                   {targets
                     .filter((item) => item.origin !== "upload")
                     .map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
-                        {item.ready ? "" : " (준비 필요)"}
+                        {item.ready ? "" : " (Need to be prepared)"}
                       </option>
                     ))}
                 </optgroup>
@@ -958,12 +956,12 @@ export default function OffensiveAssessmentsPage() {
             <div className="space-y-1 rounded-md bg-muted/50 p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium">{target.name}</p>
-                <Badge variant="outline">{target.origin === "upload" ? "직접 등록" : "실습 예제"}</Badge>
+                <Badge variant="outline">{target.origin === "upload" ? "Register directly" : "Practice Example"}</Badge>
                 {target.kind === "api" && (
                   <Badge variant="outline">{INPUT_MODES[target.input_mode ?? "openapi"].title}</Badge>
                 )}
                 <Badge variant={target.ready ? "secondary" : "destructive"}>
-                  {target.ready ? "준비됨" : "준비 필요"}
+                  {target.ready ? "Ready" : "Need to be prepared"}
                 </Badge>
               </div>
               {(target.url || target.source_path) && (
@@ -972,24 +970,25 @@ export default function OffensiveAssessmentsPage() {
                 </p>
               )}
               {target.revision && (
-                <p className="break-all text-muted-foreground text-xs">소스 버전: {target.revision}</p>
+                <p className="break-all text-muted-foreground text-xs">Source version: {target.revision}</p>
               )}
               {target.detail && <p className="text-muted-foreground">{target.detail}</p>}
               {discoveredApi && (
                 <p className="text-muted-foreground text-xs">
-                  탐색한 GET·HEAD 요청 {operations.length}개 · 선택한 요청의 서버 오류를 검사합니다.
+
+                  Searched GET·HEAD request {operations.length}Check the server error of the dog · selected request.
                 </p>
               )}
               <DiscoveryDetails discovery={target.discovery} />
               {!!target.languages?.length && (
                 <p className="text-muted-foreground text-xs">
                   {target.languages.join(" · ")}
-                  {target.file_count != null ? ` · 소스 ${target.file_count}개` : ""}
+                  {target.file_count != null ? ` · Sauce ${target.file_count}Dog` : ""}
                 </p>
               )}
               {target.sha256 && (
                 <details>
-                  <summary className="cursor-pointer text-muted-foreground text-xs">등록 자료 식별값</summary>
+                  <summary className="cursor-pointer text-muted-foreground text-xs">Registration Data Identification Value</summary>
                   <p className="mt-1 break-all font-mono text-xs">SHA-256: {target.sha256}</p>
                 </details>
               )}
@@ -998,11 +997,11 @@ export default function OffensiveAssessmentsPage() {
           {customApi && (
             <div className="space-y-4 rounded-lg border p-4">
               <fieldset className="space-y-3" disabled={starting}>
-                <legend className="font-medium text-sm">API 요청 범위 · {operationIds.length}개 선택</legend>
+                <legend className="font-medium text-sm">API Request Scope · {operationIds.length}Dog Selection</legend>
                 <p className="text-muted-foreground text-xs">
                   {discoveredApi
-                    ? `탐색한 GET·HEAD 중 최대 ${MAX_OPERATIONS}개를 실행합니다. 발견된 경로가 API로 정상 동작하는지는 응답을 검토해 확인하세요. 명세가 없어 응답 형식의 일치 여부는 검사하지 않습니다.`
-                    : `업로드한 명세의 GET·HEAD 중 최대 ${MAX_OPERATIONS}개를 실행합니다. 경로·쿼리 입력값은 도구가 생성합니다.`}
+                    ? `The maximum of the searchable GET·HEAD ${MAX_OPERATIONS}Run the dog. Review the response to see if the found path is working properly with the API. There are no specifications, so we do not check whether the response type matches.`
+                    : `Maximum of the uploaded GET·HEAD ${MAX_OPERATIONS}Run the dog. The path/query input is generated by the tool.`}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -1013,10 +1012,11 @@ export default function OffensiveAssessmentsPage() {
                       setOperationIds(operations.slice(0, MAX_OPERATIONS).map((operation) => operation.id))
                     }
                   >
-                    {operations.length > MAX_OPERATIONS ? `앞 ${MAX_OPERATIONS}개 선택` : "전체 선택"}
+                    {operations.length > MAX_OPERATIONS ? `Front ${MAX_OPERATIONS}Dog Selection` : "All Selections"}
                   </Button>
                   <Button type="button" variant="ghost" size="sm" onClick={() => setOperationIds([])}>
-                    선택 해제
+
+                    Deselect
                   </Button>
                 </div>
                 <div className="max-h-56 space-y-1 overflow-y-auto">
@@ -1045,7 +1045,7 @@ export default function OffensiveAssessmentsPage() {
                         </span>
                         {discoveredApi && (
                           <Badge variant="outline" className="shrink-0 text-[10px]">
-                            {operation.confidence === "observed" ? "요청 관측" : "경로 후보"}
+                            {operation.confidence === "observed" ? "Request observations" : "Path Candidate"}
                           </Badge>
                         )}
                       </label>
@@ -1053,23 +1053,24 @@ export default function OffensiveAssessmentsPage() {
                   })}
                 </div>
                 {!operations.length && (
-                  <p className="text-destructive text-xs">이 대상에는 실행 가능한 GET·HEAD 요청이 없습니다.</p>
+                  <p className="text-destructive text-xs">There is no executable GET/HEAD request for this target.</p>
                 )}
               </fieldset>
               <div className="space-y-2">
-                <Label htmlFor={bearerId}>Bearer 토큰 · 선택 사항</Label>
+                <Label htmlFor={bearerId}>Bearer Tokens · Optional</Label>
                 <Input
                   id={bearerId}
                   type="password"
                   value={bearerToken}
                   onChange={(event) => setBearerToken(event.target.value)}
                   autoComplete="new-password"
-                  placeholder="Bearer 접두어 없이 토큰만 입력"
+                  placeholder="Enter only tokens without the Bearer prefix"
                   maxLength={8192}
                   disabled={starting}
                 />
                 <p className="text-muted-foreground text-xs">
-                  이번 도구 진단 요청에만 사용합니다. 입력값은 제출 후 지우며 ARTEX 검토에 전달하지 않습니다.
+
+                  This tool is used only for diagnostic requests. Inputs are deleted after submission and are not passed to the ARTEX review.
                 </p>
               </div>
             </div>
@@ -1080,21 +1081,23 @@ export default function OffensiveAssessmentsPage() {
               onClick={() => void start()}
             >
               {starting ? <LoaderCircleIcon className="size-4 animate-spin" /> : <PlayIcon className="size-4" />}
-              {active ? "진행 중인 진단 완료 대기" : startLabel}
+              {active ? "Waiting for an ongoing diagnosis to be completed" : startLabel}
             </Button>
             <p className="text-muted-foreground text-xs">
-              도구 진단은 LLM 없이 실행됩니다. AI 검토는 결과 확인 후 별도로 시작합니다.
+
+              Tool diagnostics are executed without an LLM. AI review will begin separately after confirming the results.
             </p>
           </div>
           {active && (
             <p className="text-muted-foreground text-xs">
-              도구 진단은 한 번에 한 개씩 실행됩니다. 현재 진단이 끝나면 다음 진단을 시작할 수 있습니다.
+
+              The tool diagnosis is carried out one at a time. At the end of the current diagnosis, you can start the next one.
             </p>
           )}
           {!!catalog?.tools?.length && (
             <p className="text-muted-foreground text-xs">
               {catalog.tools
-                .map((tool) => `${tool.id} ${tool.version || "버전 미확인"}${tool.available ? "" : " (사용 불가)"}`)
+                .map((tool) => `${tool.id} ${tool.version || "Unidentified version"}${tool.available ? "" : " (Not available)"}`)
                 .join(" · ")}
             </p>
           )}
@@ -1104,12 +1107,12 @@ export default function OffensiveAssessmentsPage() {
       <div className="grid items-start gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">실행 이력</CardTitle>
+            <CardTitle className="text-base">Execution history</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {!runs.length && (
               <p className="text-muted-foreground text-sm">
-                {loading ? "불러오는 중…" : "아직 실행한 진단이 없습니다."}
+                {loading ? "Loading..." : "There is no confirmed diagnosis yet."}
               </p>
             )}
             {runs.map((run) => (
@@ -1141,8 +1144,8 @@ export default function OffensiveAssessmentsPage() {
             <Card>
               <CardContent className="flex flex-col items-center gap-3 py-14 text-center text-muted-foreground">
                 <FileSearchIcon className="size-8" />
-                <p>진단을 시작하거나 실행 이력을 선택하세요.</p>
-                <p className="text-xs">실제 도구 결과와 원본 근거가 여기에 표시됩니다.</p>
+                <p>Start the diagnosis or select a history of execution.</p>
+                <p className="text-xs">The actual tool results and the original basis are shown here.</p>
               </CardContent>
             </Card>
           ) : (
@@ -1150,15 +1153,15 @@ export default function OffensiveAssessmentsPage() {
               <Card>
                 <CardHeader>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="text-base">2. 진단 결과 · 근거 확인</CardTitle>
+                    <CardTitle className="text-base">2. Confirmation of diagnostic results and grounds</CardTitle>
                     <RunStatus run={selected} />
                   </div>
-                  <CardDescription className="break-all">실행 ID: {selected.id}</CardDescription>
+                  <CardDescription className="break-all">Execution ID: {selected.id}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <dl className="grid gap-3 text-sm sm:grid-cols-2">
                     <div>
-                      <dt className="text-muted-foreground text-xs">대상</dt>
+                      <dt className="text-muted-foreground text-xs">Target</dt>
                       <dd className="mt-1 break-all">
                         <span className="block font-medium">{runTargetName(selected, catalog)}</span>
                         <span className="mt-1 block text-muted-foreground text-xs">
@@ -1167,44 +1170,44 @@ export default function OffensiveAssessmentsPage() {
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground text-xs">분석 도구</dt>
+                      <dt className="text-muted-foreground text-xs">Analytics</dt>
                       <dd className="mt-1">
                         {selected.tool} {selected.tool_version}
                       </dd>
                     </div>
                     {selected.kind === "api" && (
                       <div>
-                        <dt className="text-muted-foreground text-xs">요청 출처 · 검사 방식</dt>
+                        <dt className="text-muted-foreground text-xs">Request source · Inspection method</dt>
                         <dd className="mt-1">
                           {INPUT_MODES[selected.target_snapshot?.input_mode ?? "openapi"].title} ·{" "}
-                          {selectedDiscoveredApi ? "서버 오류 검사" : "명세 기반 검사"}
+                          {selectedDiscoveredApi ? "Server Error Check" : "Specification Based Inspection"}
                         </dd>
                       </div>
                     )}
                     <div>
-                      <dt className="text-muted-foreground text-xs">시작</dt>
+                      <dt className="text-muted-foreground text-xs">Start</dt>
                       <dd className="mt-1">{formatTime(selected.started_at || selected.created_at)}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground text-xs">종료</dt>
+                      <dt className="text-muted-foreground text-xs">Exit</dt>
                       <dd className="mt-1">{formatTime(selected.finished_at)}</dd>
                     </div>
                     {selected.source_revision && (
                       <div className="sm:col-span-2">
-                        <dt className="text-muted-foreground text-xs">진단한 소스 버전</dt>
+                        <dt className="text-muted-foreground text-xs">Diagnosed source version</dt>
                         <dd className="mt-1 break-all font-mono text-xs">{selected.source_revision}</dd>
                       </div>
                     )}
                     {selected.target_snapshot?.sha256 && (
                       <div className="sm:col-span-2">
-                        <dt className="text-muted-foreground text-xs">진단에 사용한 등록 자료 SHA-256</dt>
+                        <dt className="text-muted-foreground text-xs">Registration data used for diagnosis SHA-256</dt>
                         <dd className="mt-1 break-all font-mono text-xs">{selected.target_snapshot.sha256}</dd>
                       </div>
                     )}
                   </dl>
                   {selectedDiscoveredApi && (
                     <details className="rounded-md border p-3">
-                      <summary className="cursor-pointer text-sm">API 탐색 범위 · 한계</summary>
+                      <summary className="cursor-pointer text-sm">API navigation range · limit</summary>
                       <div className="mt-2">
                         <DiscoveryDetails discovery={selected.target_snapshot?.discovery} />
                       </div>
@@ -1213,7 +1216,8 @@ export default function OffensiveAssessmentsPage() {
                   {!!selected.operation_ids?.length && (
                     <details className="rounded-md border p-3">
                       <summary className="cursor-pointer text-sm">
-                        실행한 API 요청 범위 · {selected.operation_ids.length}개
+
+                        Scope of the executed API request · {selected.operation_ids.length}Dog
                       </summary>
                       <ul className="mt-2 space-y-1 break-all font-mono text-muted-foreground text-xs">
                         {selected.operation_ids.map((id) => {
@@ -1234,11 +1238,12 @@ export default function OffensiveAssessmentsPage() {
                   {isActive(selected) && (
                     <p role="status" className="flex items-center gap-2 text-muted-foreground text-sm">
                       <LoaderCircleIcon className="size-4 animate-spin" />
-                      도구를 실행 중입니다. 완료되면 결과가 자동으로 갱신됩니다.
+
+                      The tool is running. Once done, the results will be automatically renewed.
                     </p>
                   )}
                   <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-                    <p className="font-medium">도구 발견 후보 {candidates.length}건 · 아직 취약점 확정 전</p>
+                    <p className="font-medium">Tool Discovery Candidate {candidates.length}Before the vulnerability is confirmed.</p>
                     <p className="mt-1 text-muted-foreground text-xs">{candidateNotice(selected)}</p>
                   </div>
                   {candidates.length > 0 ? (
@@ -1259,9 +1264,9 @@ export default function OffensiveAssessmentsPage() {
                             )}
                           </summary>
                           <div className="mt-3 space-y-2 text-sm">
-                            <Badge variant="outline">도구 원본 후보</Badge>
+                            <Badge variant="outline">Tool Original Nominee</Badge>
                             {candidate.rule_id && (
-                              <p className="break-all text-muted-foreground text-xs">규칙: {candidate.rule_id}</p>
+                              <p className="break-all text-muted-foreground text-xs">Rules: {candidate.rule_id}</p>
                             )}
                             <p className="whitespace-pre-wrap break-words">{candidate.message}</p>
                             {candidate.evidence != null && (
@@ -1276,13 +1281,14 @@ export default function OffensiveAssessmentsPage() {
                   ) : (
                     selected.status === "completed" && (
                       <p className="text-muted-foreground text-sm">
-                        이번 도구·규칙·실행 범위에서 후보를 찾지 못했습니다. 대상에 취약점이 없다는 의미는 아닙니다.
+
+                        We have not found a candidate in this scope of tools, rules, and execution. This does not mean that there are no vulnerabilities in the target.
                       </p>
                     )
                   )}
                   {!!selected.limitations?.length && (
                     <details className="rounded-md border p-3" open>
-                      <summary className="cursor-pointer font-medium text-sm">진단 범위 · 해석의 한계</summary>
+                      <summary className="cursor-pointer font-medium text-sm">Diagnostic scope · Limitations of interpretation</summary>
                       <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground text-xs">
                         {[...new Set(selected.limitations)].map((item) => (
                           <li key={item}>{item}</li>
@@ -1292,7 +1298,7 @@ export default function OffensiveAssessmentsPage() {
                   )}
                   {artifacts.length > 0 && (
                     <div className="space-y-2">
-                      <p className="font-medium text-sm">원본 결과 다운로드</p>
+                      <p className="font-medium text-sm">Download original results</p>
                       {artifacts.map((artifact) => (
                         <div
                           key={artifact.name}
@@ -1317,7 +1323,8 @@ export default function OffensiveAssessmentsPage() {
                             ) : (
                               <DownloadIcon className="size-3" />
                             )}{" "}
-                            다운로드
+
+                            Download
                           </Button>
                         </div>
                       ))}
@@ -1329,7 +1336,7 @@ export default function OffensiveAssessmentsPage() {
               <Card>
                 <CardHeader>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="text-base">3. 후보별 AI 검토 · 이어하기</CardTitle>
+                    <CardTitle className="text-base">3. Review and continue AI by candidate</CardTitle>
                     {selectedReview && (
                       <Badge variant={selectedReview.status === "error" ? "destructive" : "secondary"}>
                         {reviewActive && <LoaderCircleIcon className="mr-1 size-3 animate-spin" />}
@@ -1338,15 +1345,17 @@ export default function OffensiveAssessmentsPage() {
                     )}
                   </div>
                   <CardDescription>
-                    후보를 정해진 수만큼 검토하고 하나씩 저장합니다. 다음 검토는 미검토·오류 후보부터 이어갑니다.
+
+                    Review the number of candidates and save them one by one. The next review will continue from the unreviewed and error candidates.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-muted-foreground text-xs">
                     {selected.kind === "source"
-                      ? "저장된 소스와 정적 분석 근거를 검토합니다. ‘정적 근거 확인’은 실제 실행을 통한 취약점 재현과 구분됩니다."
-                      : "저장된 API 요청·응답 근거를 검토합니다. 이 단계에서는 새 HTTP 요청을 보내거나 취약점을 재현하지 않습니다."}{" "}
-                    판정은 이 화면에 저장되며 취약점으로 자동 확정·등록하지 않습니다.
+                      ? "Review the stored source and static analysis basis. ‘Check static basis’ is distinguished from the reenactment of vulnerabilities through actual execution."
+                      : "Review the stored API request and response basis. This step does not send new HTTP requests or reproduce vulnerabilities."}{" "}
+
+                    The judgment is stored on this screen and is not automatically confirmed or registered due to vulnerabilities.
                   </p>
                   {reviewError && (
                     <Alert variant="destructive">
@@ -1358,26 +1367,27 @@ export default function OffensiveAssessmentsPage() {
                           className="mt-2"
                           onClick={() => setReviewRefresh((value) => value + 1)}
                         >
-                          <RefreshCwIcon className="size-3" /> 상태 다시 불러오기
+                          <RefreshCwIcon className="size-3" />  Reload Status
                         </Button>
                       </AlertDescription>
                     </Alert>
                   )}
                   {reviewLoading && (
                     <p role="status" className="flex items-center gap-2 text-muted-foreground text-xs">
-                      <LoaderCircleIcon className="size-3 animate-spin" /> 저장된 후보 검토를 불러오는 중…
+                      <LoaderCircleIcon className="size-3 animate-spin" />  Loading a saved candidate review...
                     </p>
                   )}
                   {selectedReview && (
                     <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
                       <div aria-live="polite" className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-medium text-sm">
-                          저장된 판정 {selectedReview.reviewed} / {selectedReview.total}건
+
+                          Saved Judgments {selectedReview.reviewed} / {selectedReview.total}Gun
                         </p>
-                        <p className="text-muted-foreground text-xs">남은 후보 {selectedReview.pending}건</p>
+                        <p className="text-muted-foreground text-xs">Remaining Candidates {selectedReview.pending}Gun</p>
                       </div>
                       <progress
-                        aria-label="후보 검토 완료 비율"
+                        aria-label="Candidate Review Complete Rates"
                         max={selectedReview.total || 1}
                         value={reviewProgress}
                         className="h-2 w-full accent-primary"
@@ -1387,26 +1397,28 @@ export default function OffensiveAssessmentsPage() {
                       )}
                       {reviewProfile && (
                         <p className="text-muted-foreground text-xs">
-                          최근 검토 모델: {reviewProfile.name} · {reviewProfile.model}
+
+                          Recent review models: {reviewProfile.name} · {reviewProfile.model}
                         </p>
                       )}
                       <p className="text-muted-foreground text-xs">
-                        마지막 저장: {formatTime(selectedReview.updated_at)}
+
+                        Last Save: {formatTime(selectedReview.updated_at)}
                       </p>
                       {lastAttempt && (
                         <dl className="grid gap-2 text-xs sm:grid-cols-3">
                           <div>
-                            <dt className="text-muted-foreground">이번 모델 호출·대기</dt>
+                            <dt className="text-muted-foreground">Call this model</dt>
                             <dd className="mt-1">
-                              {lastAttempt.model_calls}회 · {formatDuration(lastAttempt.model_elapsed_ms)}
+                              {lastAttempt.model_calls}sashimi · {formatDuration(lastAttempt.model_elapsed_ms)}
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-muted-foreground">검토 큐 대기</dt>
+                            <dt className="text-muted-foreground">Wait for Review Queue</dt>
                             <dd className="mt-1">{formatDuration(lastAttempt.queue_wait_ms)}</dd>
                           </div>
                           <div>
-                            <dt className="text-muted-foreground">이번 검토 시간</dt>
+                            <dt className="text-muted-foreground">This Review Time</dt>
                             <dd className="mt-1">
                               {formatDuration(Math.max(0, lastAttempt.active_elapsed_ms, lastAttempt.model_elapsed_ms))}
                             </dd>
@@ -1414,8 +1426,9 @@ export default function OffensiveAssessmentsPage() {
                         </dl>
                       )}
                       <p className="text-muted-foreground text-xs">
-                        ‘인증 필요’·‘근거 부족’도 저장된 판정에 포함됩니다. 중지·시간초과 뒤에도 완료된 판정은
-                        유지됩니다.
+
+                        ‘Certification required’ and ‘lack of foundation’ are also included in the saved judgment. The decision completed after the stop and timeout is also included.
+                        maintained.
                       </p>
                     </div>
                   )}
@@ -1423,7 +1436,7 @@ export default function OffensiveAssessmentsPage() {
                     <>
                       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_170px]">
                         <div className="space-y-2">
-                          <Label htmlFor={profileSelectId}>검토 모델</Label>
+                          <Label htmlFor={profileSelectId}>Review Model</Label>
                           <select
                             id={profileSelectId}
                             value={profileId}
@@ -1435,18 +1448,18 @@ export default function OffensiveAssessmentsPage() {
                             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                           >
                             <option value="">
-                              {selectedReview ? "이전 검토 모델 설정 사용" : "시스템 기본 LLM 설정"}
+                              {selectedReview ? "Enable previous review model settings" : "System Basic LLM Setting"}
                             </option>
                             {profiles.map((profile) => (
                               <option key={profile.id} value={profile.id}>
                                 {profile.name} · {profile.model}
-                                {profile.is_default ? " (기본)" : ""}
+                                {profile.is_default ? " (Basic)" : ""}
                               </option>
                             ))}
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor={batchSelectId}>한 번에 검토할 후보</Label>
+                          <Label htmlFor={batchSelectId}>Candidates to review at once</Label>
                           <select
                             id={batchSelectId}
                             value={batchSize}
@@ -1456,7 +1469,7 @@ export default function OffensiveAssessmentsPage() {
                           >
                             {[1, 2, 3, 4, 5].map((size) => (
                               <option key={size} value={size}>
-                                {size}건
+                                {size}Gun
                               </option>
                             ))}
                           </select>
@@ -1465,16 +1478,18 @@ export default function OffensiveAssessmentsPage() {
                       {selectedProfile && (
                         <div className="space-y-1 text-muted-foreground text-xs">
                           <p>
-                            선택 모델 호출 제한:{" "}
+
+                            Limit selection model calls:{" "}
                             {selectedProfile.rate_per_minute > 0
-                              ? `분당 ${selectedProfile.rate_per_minute}회`
-                              : "분당 제한 미설정"}
-                            {selectedProfile.rate_per_second > 0 ? ` · 초당 ${selectedProfile.rate_per_second}회` : ""}
+                              ? `Bundang ${selectedProfile.rate_per_minute}hoe`
+                              : "Limits per minute unset"}
+                            {selectedProfile.rate_per_second > 0 ? ` · Per second ${selectedProfile.rate_per_second}hoe` : ""}
                           </p>
                           {selectedProfile.rate_per_minute === 1 && (
                             <p className="text-amber-700 dark:text-amber-400">
-                              분당 1회 설정은 후보마다 대기를 늘릴 수 있습니다. 빠른 검토용 프로필을 선택하거나 공급자
-                              한도에 맞게 설정하세요.
+
+                              Once a minute setting, you can increase the wait per candidate. Choose a profile for quick review or provider
+                              Set it to the limit.
                             </p>
                           )}
                         </div>
@@ -1483,11 +1498,13 @@ export default function OffensiveAssessmentsPage() {
                         href="/system/llm/"
                         className="inline-block text-primary text-xs underline underline-offset-4"
                       >
-                        LLM 연결 · 호출 제한 설정
+
+                        LLM Connection · Call Limit Setting
                       </Link>
                       <p className="text-muted-foreground text-xs">
-                        AI 검토 시 진단 근거와 필요한 소스·응답 내용이 선택한 LLM으로 전송되며 모델 사용량이 발생합니다.
-                        설정한 후보 수를 처리하면 종료하며 후속 공격·조사를 자동 생성하지 않습니다.
+
+                        During the AI review, the diagnostic basis and the required source and response content will be sent to the selected LLM, resulting in model usage.
+                        If you handle the number of candidates you set, it will end and will not automatically generate subsequent attacks and investigations.
                       </p>
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
@@ -1512,7 +1529,7 @@ export default function OffensiveAssessmentsPage() {
                             ) : (
                               <SquareIcon className="size-3" />
                             )}
-                            {cancellingReview ? "중지 요청 중…" : "검토 중지"}
+                            {cancellingReview ? "Request to stop..." : "Stop Reviewing"}
                           </Button>
                         )}
                       </div>
@@ -1520,18 +1537,20 @@ export default function OffensiveAssessmentsPage() {
                   )}
                   {selected.status !== "completed" && (
                     <p className="text-muted-foreground text-xs">
-                      도구 진단이 정상 완료된 실행에서 AI 검토를 시작할 수 있습니다.
+
+                      You can start an AI review in a run where the tool diagnosis is completed as normal.
                     </p>
                   )}
                   {selected.status === "completed" && !candidates.length && (
                     <p className="text-muted-foreground text-xs">
-                      발견 후보가 없어 모델 호출이 필요하지 않습니다. 후보가 없다는 결과는 취약점 부재를 보증하지
-                      않습니다.
+
+                      No model calls are required because there are no found candidates. The result of no candidate is not guaranteed to be a vulnerability.
+                      No.
                     </p>
                   )}
                   {!!selectedReview?.candidates?.length && (
                     <div className="space-y-2">
-                      <p className="font-medium text-sm">후보별 저장 결과</p>
+                      <p className="font-medium text-sm">Save Results by Candidate</p>
                       {selectedReview.candidates.map((candidate) => (
                         <CandidateReviewCard key={candidate.id} candidate={candidate} />
                       ))}
@@ -1540,7 +1559,8 @@ export default function OffensiveAssessmentsPage() {
                   {!!selectedReview?.attempts?.length && (
                     <details className="rounded-md border p-3">
                       <summary className="cursor-pointer text-sm">
-                        검토 · 이어하기 이력 {selectedReview.attempts.length}회
+
+                        Review · E-Eating history {selectedReview.attempts.length}hoe
                       </summary>
                       <div className="mt-3 space-y-3">
                         {[...selectedReview.attempts].reverse().map((attempt) => (
@@ -1549,13 +1569,16 @@ export default function OffensiveAssessmentsPage() {
                               {formatTime(attempt.queued_at)} · {REVIEW_STATUS[attempt.status] ?? attempt.status}
                             </p>
                             <p className="text-muted-foreground">
-                              최대 {attempt.batch_size}건 · 모델 {attempt.model_calls}회 · 입력{" "}
-                              {attempt.input_tokens.toLocaleString()} / 출력 {attempt.output_tokens.toLocaleString()}{" "}
-                              토큰
+
+                              Max {attempt.batch_size}Gun · Model {attempt.model_calls}Assembly · Input{" "}
+                              {attempt.input_tokens.toLocaleString()}  / Output {attempt.output_tokens.toLocaleString()}{" "}
+
+                              Tokens
                             </p>
                             <p className="text-muted-foreground">
-                              큐 대기 {formatDuration(attempt.queue_wait_ms)} · 모델 호출·대기{" "}
-                              {formatDuration(attempt.model_elapsed_ms)} · 검토 실행{" "}
+
+                              Queue waiting {formatDuration(attempt.queue_wait_ms)}  · Model call·Wait{" "}
+                              {formatDuration(attempt.model_elapsed_ms)}  · Review Execution{" "}
                               {formatDuration(Math.max(0, attempt.active_elapsed_ms, attempt.model_elapsed_ms))}
                             </p>
                             {attempt.reason && <p className="whitespace-pre-wrap break-words">{attempt.reason}</p>}
@@ -1570,10 +1593,12 @@ export default function OffensiveAssessmentsPage() {
                         href={`/function/tasks/detail?id=${encodeURIComponent(legacyTaskId)}`}
                         className="inline-flex items-center gap-1 text-muted-foreground text-xs underline underline-offset-4"
                       >
-                        이전 ARTEX 검토 작업 열기 <ArrowUpRightIcon className="size-3" />
+
+                        Open previous ARTEX review jobs <ArrowUpRightIcon className="size-3" />
                       </Link>
                       <p className="mt-1 text-muted-foreground text-xs">
-                        기존 작업 이력은 보존됩니다. 위 후보별 검토는 저장된 도구 근거에서 별도로 진행합니다.
+
+                        Existing work history is preserved. The candidate-specific review above is conducted separately from the stored tool basis.
                       </p>
                     </div>
                   )}

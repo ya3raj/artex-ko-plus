@@ -10,10 +10,10 @@ import (
 	"github.com/Autumn-27/norma/llm"
 )
 
-// hasHangul reports whether s contains any Hangul character.
-func hasHangul(s string) bool {
+// hasLatin reports whether s contains any Latin character.
+func hasLatin(s string) bool {
 	for _, r := range s {
-		if unicode.Is(unicode.Hangul, r) {
+		if unicode.Is(unicode.Latin, r) {
 			return true
 		}
 	}
@@ -32,7 +32,7 @@ func hasHanzi(s string) bool {
 
 // assertSurfacedExhaustion checks the error an exhausted chain hands back: it must
 // still wrap the ErrExhausted sentinel (callers rely on errors.Is), read as a
-// Korean message (no Han characters, no full-width colon), and lead with the
+// English message (no Han characters, no full-width colon), and lead with the
 // localized sentinel text. failProv's body is ASCII ("anthropic: status 402:
 // nope"), so the whole surfaced string must be Han-free.
 func assertSurfacedExhaustion(t *testing.T, label string, err error) {
@@ -57,10 +57,10 @@ func assertSurfacedExhaustion(t *testing.T, label string, err error) {
 
 // The chain-exhaustion error is user-facing: a worker whose whole LLM chain fails
 // records it through agent/capture.go as a "result" activity shown in the run
-// transcript. So its text must be Korean, while its identity (errors.Is) must be
+// transcript. So its text must be English, while its identity (errors.Is) must be
 // preserved for callers that branch on the sentinel.
 func TestExhaustedErrorLocalized(t *testing.T) {
-	assertKoreanErrText(t, "ErrExhausted", ErrExhausted.Error())
+	assertEnglishErrText(t, "ErrExhausted", ErrExhausted.Error())
 
 	// Drive both surfaced paths so a future edit to either wrap site is caught.
 	streamChain := New([]*Member{
@@ -78,10 +78,10 @@ func TestExhaustedErrorLocalized(t *testing.T) {
 	assertSurfacedExhaustion(t, "Complete", cerr)
 }
 
-// assertKoreanErrText fails unless s contains Hangul and no Han character.
-func assertKoreanErrText(t *testing.T, label, s string) {
+// assertEnglishErrText fails unless s contains Latin and no Han character.
+func assertEnglishErrText(t *testing.T, label, s string) {
 	t.Helper()
-	if !hasHangul(s) {
+	if !hasLatin(s) {
 		t.Errorf("%s: 한글이 없습니다: %q", label, s)
 	}
 	if hasHanzi(s) {

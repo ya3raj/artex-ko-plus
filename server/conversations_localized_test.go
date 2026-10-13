@@ -10,7 +10,7 @@ import (
 )
 
 // conversations.go 의 대화(채팅) API 에러 응답을 한국어로 유지하는 회귀 방어 테스트다.
-// 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를 재사용한다.
+// 한국어 판정은 F3a 가 만든 assertEnglishError(한글 포함·중국어 한자 0)를 재사용한다.
 
 // TestConversationErrorConstantsLocalized 는 응답 상수 12종이 전부 한국어임을 단언한다.
 // 핸들러는 s.pg(w)(DB)를 먼저 거쳐 DB 없는 이 호스트에서 끝까지 못 도므로, 상수 자체를
@@ -34,7 +34,7 @@ func TestConversationErrorConstantsLocalized(t *testing.T) {
 		{"busy", convErrBusy},
 	}
 	for _, c := range cases {
-		assertKoreanError(t, c.name, c.msg)
+		assertEnglishError(t, c.name, c.msg)
 	}
 }
 
@@ -65,15 +65,15 @@ func TestDecodeConversationRequestTooLargeLocalized(t *testing.T) {
 	if resp.Error != convErrRequestTooLarge {
 		t.Fatalf("응답 error = %q, 기대 = %q", resp.Error, convErrRequestTooLarge)
 	}
-	assertKoreanError(t, "decode.too_large.response", resp.Error)
+	assertEnglishError(t, "decode.too_large.response", resp.Error)
 }
 
 // TestConversationDefaultTitlesLocalized 는 대화 기본 제목 두 상수(F8)가 한국어이고 서로
 // 구별됨을 단언한다. convDefaultTitle 은 생성 기본값이자 자동 제목 분기의 센티넬이므로,
 // 중국어 "新对话" 로 되돌아가면 사용자가 대화 목록·삭제 다이얼로그에서 중국어를 보게 된다.
 func TestConversationDefaultTitlesLocalized(t *testing.T) {
-	assertKoreanError(t, "default_title", convDefaultTitle)
-	assertKoreanError(t, "attachment_title", convAttachmentTitle)
+	assertEnglishError(t, "default_title", convDefaultTitle)
+	assertEnglishError(t, "attachment_title", convAttachmentTitle)
 	if convDefaultTitle == convAttachmentTitle {
 		t.Fatal("기본 제목과 첨부 기본 제목이 같으면 안 된다")
 	}
@@ -98,9 +98,9 @@ func TestIsDefaultConversationTitle(t *testing.T) {
 // 단언한다. 이 값들은 finding_retests.error 컬럼에 저장돼 재검증 패널 item.error 로
 // 노출되므로, 중국어로 되돌아가면 사용자가 패널에서 중국어 사유를 보게 된다.
 func TestConversationRetestReasonsLocalized(t *testing.T) {
-	assertKoreanError(t, "retest_failed_to_start", convRetestFailedToStart)
-	assertKoreanError(t, "retest_status_read_failed", convRetestStatusReadFailed)
-	assertKoreanError(t, "retest_stopped_or_closed", convRetestStoppedOrClosed)
+	assertEnglishError(t, "retest_failed_to_start", convRetestFailedToStart)
+	assertEnglishError(t, "retest_status_read_failed", convRetestStatusReadFailed)
+	assertEnglishError(t, "retest_stopped_or_closed", convRetestStoppedOrClosed)
 }
 
 // TestTranscriptErrorSummaryLocalized 는 활동 전사 오류 래퍼(F9)를 핀 고정한다. 채팅 턴
@@ -113,8 +113,8 @@ func TestTranscriptErrorSummaryLocalized(t *testing.T) {
 		errm  string
 		want  string
 	}{
-		{"chat_turn", "", "connection reset", "(오류: connection reset)"},
-		{"main_agent", "메인 에이전트", "connection reset", "(메인 에이전트 오류: connection reset)"},
+		{"chat_turn", "", "connection reset", "(Error: connection reset)"},
+		{"main_agent", "Main Agent", "connection reset", "(Main Agent Error: connection reset)"},
 	}
 	for _, c := range cases {
 		got := transcriptErrorSummary(c.label, c.errm)
@@ -131,6 +131,6 @@ func TestTranscriptErrorSummaryLocalized(t *testing.T) {
 		// 래퍼 라벨에 한글이 있고 중국어 한자가 없어야 한다(err 원문은 검사 대상이 아니라
 		// ASCII 로 고정). 라벨이 없는 채팅 턴도 "오류" 한글을 포함한다.
 		wrapper := strings.ReplaceAll(got, c.errm, "")
-		assertKoreanError(t, c.name+".wrapper", wrapper)
+		assertEnglishError(t, c.name+".wrapper", wrapper)
 	}
 }

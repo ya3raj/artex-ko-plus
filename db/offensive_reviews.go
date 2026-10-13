@@ -203,7 +203,7 @@ func (d *DB) RecoverOffensiveReview(ctx context.Context, runID string) (*Offensi
 	}
 	return d.UpdateOffensiveReview(ctx, runID, func(r *OffensiveReview) error {
 		if (r.Status == "running" || r.Status == "queued") && !r.LeaseUntil.After(time.Now()) {
-			InterruptOffensiveReview(r, time.Now().UTC(), "서버 실행이 중단되었습니다. 저장된 판정은 유지되며 남은 후보를 이어서 검토할 수 있습니다.")
+			InterruptOffensiveReview(r, time.Now().UTC(), "Server execution has been stopped. Saved decisions will be retained and the remaining candidates can be reviewed.")
 		}
 		return nil
 	})

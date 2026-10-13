@@ -9,7 +9,7 @@ import (
 )
 
 // intent_intervention.go 의 Worker 개입 API 에러 응답을 한국어로 유지하는 회귀 방어
-// 테스트다. 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를 재사용한다.
+// 테스트다. 한국어 판정은 F3a 가 만든 assertEnglishError(한글 포함·중국어 한자 0)를 재사용한다.
 
 // TestIntentInterventionErrorConstantsLocalized 는 응답 상수 11종이 전부 한국어임을 단언한다.
 // 수명주기·의도 상태 경로는 s.engine·Store 설정이 필요해 DB 없는 이 호스트에서 끝까지 못
@@ -33,7 +33,7 @@ func TestIntentInterventionErrorConstantsLocalized(t *testing.T) {
 		{"not_paused", errIntentNotPaused},
 	}
 	for _, c := range cases {
-		assertKoreanError(t, c.name, c.msg)
+		assertEnglishError(t, c.name, c.msg)
 	}
 }
 
@@ -84,7 +84,7 @@ func TestSendWorkerMessageInputValidationLocalized(t *testing.T) {
 			if got := errBody(t, rec); got != c.want {
 				t.Fatalf("응답 문구 = %q, 기대 = %q", got, c.want)
 			}
-			assertKoreanError(t, c.name, errBody(t, rec))
+			assertEnglishError(t, c.name, errBody(t, rec))
 		})
 	}
 }

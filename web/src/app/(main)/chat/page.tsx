@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/config";
+
 import * as React from "react";
 
 import {
@@ -469,7 +471,7 @@ function DraftChat({
         <div className="bg-primary/10 flex size-12 items-center justify-center rounded-full">
           <Bot className="text-primary size-6" />
         </div>
-        <div className="text-sm font-medium">{t("emptyStart", { agent: agent?.name ?? "에이전트" })}</div>
+        <div className="text-sm font-medium">{t("emptyStart", { agent: agent?.name ?? "Agent" })}</div>
         {agent?.description && <p className="text-muted-foreground max-w-md text-xs">{agent.description}</p>}
       </div>
 
@@ -982,7 +984,7 @@ const ConversationItem = React.memo(function ConversationItem({
               </>
             )}
             <span className="shrink-0">
-              {new Date(conv.created_at).toLocaleDateString("ko-KR", {
+              {new Date(conv.created_at).toLocaleDateString(resolveLocale(), {
                 month: "numeric",
                 day: "numeric",
                 hour: "2-digit",

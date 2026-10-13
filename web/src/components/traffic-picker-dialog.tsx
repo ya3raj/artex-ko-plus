@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/config";
+
 import * as React from "react";
 
 import { useTranslations } from "next-intl";
@@ -217,7 +219,7 @@ export function TrafficPickerDialog({
                       {alreadyBound.has(e.id) ? <Badge variant="secondary">{t("picker.bound")}</Badge> : null}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-xs">
-                      {new Date(e.ts).toLocaleString("ko-KR")}
+                      {new Date(e.ts).toLocaleString(resolveLocale())}
                     </TableCell>
                     <TableCell>{e.status}</TableCell>
                     <TableCell>

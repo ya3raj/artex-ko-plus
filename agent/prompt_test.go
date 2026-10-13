@@ -82,18 +82,18 @@ func TestRenderSystemOverrideAndFallback(t *testing.T) {
 }
 
 // TestLangDirectiveAppendedToUserFacingRoles pins the artex-ko localization tail:
-// every user-facing role's system prompt must end with the code-owned Korean
+// every user-facing role's system prompt must end with the code-owned English
 // output-language directive, and a DB-edited body must NOT be able to drop it.
 func TestLangDirectiveAppendedToUserFacingRoles(t *testing.T) {
 	t.Cleanup(func() { PromptOverride = nil })
 
-	// The directive forces Korean OUTPUT and preserves raw technical strings; both
-	// signals must be present. 한국어 marker + verbatim-preservation clause.
+	// The directive forces English OUTPUT and preserves raw technical strings; both
+	// signals must be present. English marker + verbatim-preservation clause.
 	dir := langDirective()
-	if !strings.Contains(dir, "한국어") {
-		t.Fatalf("langDirective must force Korean output, got %q", dir)
+	if !strings.Contains(dir, "English") {
+		t.Fatalf("langDirective must force English output, got %q", dir)
 	}
-	if !strings.Contains(dir, "payload") || !strings.Contains(dir, "原样逐字保留") {
+	if !strings.Contains(dir, "payload") || !strings.Contains(dir, "exactly") {
 		t.Fatalf("langDirective must keep commands/payloads verbatim, got %q", dir)
 	}
 	// L1 anti-drift hardening: the directive must (1) forbid leaking the Chinese
@@ -101,19 +101,19 @@ func TestLangDirectiveAppendedToUserFacingRoles(t *testing.T) {
 	// drift), and (2) forbid mirroring the target/material language — e.g. an
 	// English target app — in the display fields (report_finding drift). Both
 	// clauses are locked here so a future edit can't silently drop them.
-	if !strings.Contains(dir, "也绝不能把中文输出给用户") {
+	if !strings.Contains(dir, "User-visible prose must be English") {
 		t.Fatalf("langDirective must forbid leaking Chinese to the user, got %q", dir)
 	}
-	if !strings.Contains(dir, "不要镜像或照抄目标") {
+	if !strings.Contains(dir, "Do not mirror the language") {
 		t.Fatalf("langDirective must forbid mirroring the target/material language, got %q", dir)
 	}
-	if !strings.Contains(dir, "态势") {
+	if !strings.Contains(dir, "situation summaries") {
 		t.Fatalf("langDirective must name the planner situation summary as user-facing, got %q", dir)
 	}
 
 	// Even with a DB body that is pure non-directive text, the code-owned tail is
 	// still appended for each user-facing builder — identical guarantee to the
-	// artifact tail. A custom body can never translate away the Korean mandate.
+	// artifact tail. A custom body can never translate away the English mandate.
 	PromptOverride = func(string) (string, bool) { return "BODY-ONLY", true }
 	cases := map[string]string{
 		"worker":    workerSystem("", "", "/data", "/data"),
@@ -122,7 +122,7 @@ func TestLangDirectiveAppendedToUserFacingRoles(t *testing.T) {
 		"chat":      chatSystem("chat", "/data", "/data"),
 		// goals is user-facing too: set_goals/set_constraints persist goal and
 		// constraint nodes shown in the UI graph/plan tab. withScope=true exercises
-		// the longer assembly (body + scope tail), so the Korean tail must still land
+		// the longer assembly (body + scope tail), so the English tail must still land
 		// last — after both the body and the code-owned scope tail.
 		"goals": goalsSystem("/data", true),
 	}
@@ -130,11 +130,11 @@ func TestLangDirectiveAppendedToUserFacingRoles(t *testing.T) {
 		if !strings.HasPrefix(sys, "BODY-ONLY") {
 			t.Fatalf("%s: DB body not honored: %q", role, sys)
 		}
-		if !strings.Contains(sys, "한국어") {
-			t.Fatalf("%s: missing Korean output-language tail: %q", role, sys)
+		if !strings.Contains(sys, "English") {
+			t.Fatalf("%s: missing English output-language tail: %q", role, sys)
 		}
 		// The directive is the tail — it must come AFTER the body (recency).
-		if strings.Index(sys, "한국어") <= strings.Index(sys, "BODY-ONLY") {
+		if strings.Index(sys, "English") <= strings.Index(sys, "BODY-ONLY") {
 			t.Fatalf("%s: langDirective must be appended after the body: %q", role, sys)
 		}
 	}

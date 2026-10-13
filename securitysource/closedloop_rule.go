@@ -108,12 +108,12 @@ func validateClosedLoopRules(mapping investigation.Mapping, rules ...closedloop.
 			return fmt.Errorf("%w: %v", ErrInvalid, err)
 		}
 		if !utf8.ValidString(rule.Name) || strings.ContainsAny(rule.Name, "\x00\r\n") {
-			return fmt.Errorf("%w: 규칙 이름을 확인하세요", ErrInvalid)
+			return fmt.Errorf("%w: Check the rule name", ErrInvalid)
 		}
 		for _, branch := range rule.Any {
 			for _, cond := range branch.All {
 				if !allowed[cond.Field] || !utf8.ValidString(cond.Value) || strings.ContainsAny(cond.Value, "\x00\r\n") {
-					return fmt.Errorf("%w: 규칙은 허용된 행동 필드와 UTF-8 리터럴 값만 사용할 수 있습니다", ErrInvalid)
+					return fmt.Errorf("%w : Rules can only use allowed action fields and UTF-8 literal values", ErrInvalid)
 				}
 			}
 		}
@@ -124,10 +124,10 @@ func validateClosedLoopRules(mapping investigation.Mapping, rules ...closedloop.
 func validateClosedLoopScope(c Config, q Query, scope investigation.Scope, mapping investigation.Mapping) error {
 	if !correlationName.MatchString(q.CorrelationID) || q.Start.IsZero() || !q.End.After(q.Start) ||
 		q.End.Sub(q.Start) > 24*time.Hour || !q.Start.Equal(scope.Start) || !q.End.Equal(scope.End) {
-		return fmt.Errorf("%w: 같은 실행 UUID와 최대 24시간의 동일 조회 구간이 필요합니다", ErrInvalid)
+		return fmt.Errorf("%w : Requires the same execution UUID and up to twenty-four hours of the same lookup interval", ErrInvalid)
 	}
 	if mapping.VerificationID != c.CorrelationField || mapping.Target == "" || mapping.Path == "" || scope.PathPrefix == "" {
-		return fmt.Errorf("%w: 실행 UUID·대상·경로 범위의 원본 필드 매핑이 필요합니다", ErrInvalid)
+		return fmt.Errorf("%w : Run UUID·Target·Range Range Requires original field mapping", ErrInvalid)
 	}
 	if err := investigation.ValidateScope(scope, time.Now().UTC()); err != nil {
 		return err
@@ -174,7 +174,7 @@ func BuildClosedLoopRuleSearch(c Config, q Query, scope investigation.Scope, map
 	// Remove only compiler-owned intermediates; retain every native source field.
 	search += " | fields - _aegis_shadow_b_cond_* _aegis_shadow_b_branch_* _aegis_shadow_c_cond_* _aegis_shadow_c_branch_*" + suffix
 	if len(search) > maxClosedLoopSearchBytes {
-		return "", fmt.Errorf("%w: 생성된 검색식은 64 KiB 이하여야 합니다. 규칙을 줄여 주세요", ErrInvalid)
+		return "", fmt.Errorf("%w : The generated search expression must be less than 64 KiB. Please reduce the rules", ErrInvalid)
 	}
 	return search, nil
 }
@@ -267,7 +267,7 @@ func FetchClosedLoopRules(ctx context.Context, c Config, auth Credentials, q Que
 	}
 	if err != nil {
 		out.ErrorCode = "invalid_export"
-		out.warn("Splunk 검색 응답을 해석하지 못했습니다. 원본 응답을 확인하세요")
+		out.warn("Splunk search response failed to interpret. Please check source response")
 		return out, err
 	}
 	out.Files[0].Rows = rows
@@ -278,46 +278,46 @@ func FetchClosedLoopRules(ctx context.Context, c Config, auth Credentials, q Que
 	// Unlike historical hunting, a live no-match needs a completed terminal
 	// envelope even for zero rows. Empty/diagnostic-only HTTP 200 is inconclusive.
 	if rows == 0 && !closedLoopTerminal(body) {
-		out.warn("Splunk 검색의 완료 표시가 없어 빈 결과의 완전성을 확인하지 못했습니다")
+		out.warn("No completion indication of Splunk search failed to confirm the completeness of the empty result")
 	}
 	mapping.Timestamp = "_time"
 	collection, err := investigation.ParseFiles([]investigation.InputFile{{Name: "splunk-shadow-events.jsonl", Content: string(results)}}, scope, mapping, complete, false, []string{q.CorrelationID})
 	if err != nil {
 		out.ErrorCode = "invalid_events"
-		out.warn("Splunk 원본 이벤트의 범위와 필드 매핑을 확인하지 못했습니다")
+		out.warn("Splunk failed to check the scope and field mapping of the original event")
 		return out, err
 	}
 	if !collection.Complete {
-		out.warn("반환된 이벤트 중 범위·필드·한도를 확인할 수 없는 항목이 있습니다")
+		out.warn("Among the returned events, there are items that cannot be checked for scope, fields, and limits.")
 	}
 	out.Truncated += collection.Stats.Truncated
 	if collection.Stats.UnrelatedTarget+collection.Stats.UnrelatedPath+collection.Stats.OutsideWindow > 0 {
-		out.warn("설정된 대상·경로·시각 범위 밖의 이벤트가 반환됐습니다")
+		out.warn("Events outside the target, route, and time range have been returned.")
 	}
 	seen := map[string]string{}
 	for _, event := range collection.Events {
 		if event.VerificationID != q.CorrelationID {
-			out.warn("설정된 실행 UUID와 다른 이벤트가 반환됐습니다")
+			out.warn("Set execution UUID and other events have been returned")
 			continue
 		}
 		fields, fallback, err := closedLoopObjects([]byte(event.Raw))
 		if err != nil || closedLoopScalar(fields["index"]) != c.Index || closedLoopScalar(fields["sourcetype"]) != c.AuditSourcetype {
-			out.warn("감사 로그 출처 또는 원본 이벤트 형식을 확인하지 못했습니다")
+			out.warn("Audit log source or original event format could not be verified")
 			continue
 		}
 		base, cand := closedLoopScalar(fields[baselineShadowField]), closedLoopScalar(fields[candidateShadowField])
 		if closedLoopPayloadTruncated(fields, fallback) {
-			out.warn("원본 요청 필드가 수집기에서 잘렸습니다. 전체 요청에 대한 규칙 결과는 확인할 수 없습니다")
+			out.warn("The original request field has been truncated from the collector. The rule result for the entire request cannot be determined.")
 		}
 		if base != matchClosedLoopRule(fields, fallback, baseline) || cand != matchClosedLoopRule(fields, fallback, candidate) {
-			out.warn("Splunk 규칙 결과와 원본 필드의 조건 판정이 일치하지 않습니다")
+			out.warn("The results of the Splunk rule and the condition determination of the source field do not match")
 			base, cand = "unknown", "unknown"
 		}
 		id := closedLoopEventID(fields, fallback, mapping, c.Index, []byte(event.Raw))
 		hash := closedloop.Hash([]byte(event.Raw))
 		if previous, exists := seen[id]; exists {
 			if previous != hash {
-				out.warn("같은 원본 이벤트 ID에 서로 다른 로그가 반환됐습니다")
+				out.warn("Different logs were returned to the same original event ID")
 			}
 			continue
 		}
@@ -362,7 +362,7 @@ func closedLoopExport(ctx context.Context, c Config, auth Credentials, scope inv
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/services/search/v2/jobs/export", strings.NewReader(form.Encode()))
 	if err != nil {
 		out.ErrorCode = "invalid_request"
-		return nil, errors.New("보안 로그 조회 요청을 만들지 못했습니다")
+		return nil, errors.New("Failed to create security log lookup request")
 	}
 	if auth.Token != "" {
 		r.Header.Set("Authorization", "Bearer "+auth.Token)
@@ -376,36 +376,36 @@ func closedLoopExport(ctx context.Context, c Config, auth Credentials, scope inv
 	res, err := h.Do(r)
 	if err != nil {
 		out.ErrorCode = "connection_failed"
-		out.warn("Splunk 연결 또는 조회 요청이 완료되지 않았습니다")
+		out.warn("Splunk connection or lookup request not completed")
 		if ctx.Err() != nil {
 			out.ErrorCode = "request_cancelled"
 			return nil, ctx.Err()
 		}
-		return nil, errors.New("Splunk 연결에 실패했습니다. 주소·인증서·네트워크를 확인해 주세요")
+		return nil, errors.New("Splunk connection failed. Please check address, certificate, network")
 	}
 	defer res.Body.Close()
 	out.HTTPStatus = res.StatusCode
 	if res.StatusCode != http.StatusOK {
 		out.ErrorCode = "http_error"
-		out.warn("Splunk가 검색 요청을 거절했습니다")
-		return nil, fmt.Errorf("Splunk 조회가 HTTP %d로 거절됐습니다. 연결 계정과 검색 권한을 확인해 주세요", res.StatusCode)
+		out.warn("Splunk has refused a search request")
+		return nil, fmt.Errorf("Splunk lookup rejected with HTTP %d. Please check your connection account and search permissions", res.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes+1))
 	if len(body) > maxResponseBytes {
 		out.Truncated++
 		out.ErrorCode = "response_limit"
-		out.warn("Splunk 응답이 4 MiB를 초과했습니다. 저장된 응답은 일부입니다")
-		return body[:maxResponseBytes], errors.New("Splunk 응답이 4 MiB를 초과했습니다. 조회 범위를 줄여 주세요")
+		out.warn("Splunk response exceeded 4 MiB. Saved responses are some")
+		return body[:maxResponseBytes], errors.New("Splunk response exceeded 4 MiB. Please reduce the search range")
 	}
 	if err != nil {
 		out.ErrorCode = "response_interrupted"
-		out.warn("Splunk 응답을 끝까지 읽지 못했습니다. 저장된 응답은 일부입니다")
-		return body, errors.New("Splunk 응답을 끝까지 읽지 못했습니다")
+		out.warn("I didn't read the Splunk response to the end. The saved responses are some")
+		return body, errors.New("I didn't read the Splunk response to the end")
 	}
 	if !utf8.Valid(body) || bytes.ContainsRune(body, 0) {
 		out.ErrorCode = "invalid_encoding"
-		out.warn("Splunk 응답이 지원하는 UTF-8 로그 형식이 아닙니다")
-		return nil, errors.New("Splunk 응답은 NUL 없는 UTF-8이어야 합니다")
+		out.warn("Not the UTF-8 log format that Splunk responses support")
+		return nil, errors.New("Splunk response must be UTF-8 without NUL")
 	}
 	return body, nil
 }
@@ -566,7 +566,7 @@ func closedLoopEventID(fields, fallback map[string]any, mapping investigation.Ma
 // alert, run an attack, or infer that uploading a matching log means detection.
 func EvaluateClosedLoopFile(c Config, q Query, scope investigation.Scope, mapping investigation.Mapping, baseline, candidate closedloop.Rule, evidence *Evidence) (*ClosedLoopSearchResult, error) {
 	if evidence == nil || evidence.Upload == nil {
-		return nil, fmt.Errorf("%w: 원본 업로드 증거가 필요합니다", ErrInvalid)
+		return nil, fmt.Errorf("%w Original upload proof is required", ErrInvalid)
 	}
 	if err := validateClosedLoopScope(c, q, scope, mapping); err != nil {
 		return nil, err
@@ -575,23 +575,23 @@ func EvaluateClosedLoopFile(c Config, q Query, scope investigation.Scope, mappin
 		return nil, err
 	}
 	if len(evidence.Upload.Files) == 0 || len(evidence.Upload.Files) > 2 {
-		return nil, fmt.Errorf("%w: 원본 감사·경보 업로드 파일이 필요합니다", ErrInvalid)
+		return nil, fmt.Errorf("%w : Original audit·alert upload file is required", ErrInvalid)
 	}
 	total := 0
 	for _, file := range evidence.Upload.Files {
 		total += len(file.Content)
 		if total > MaxUploadBytes || file.Bytes != len(file.Content) || file.SHA256 != closedloop.Hash([]byte(file.Content)) {
-			return nil, fmt.Errorf("%w: 업로드 파일 원문·크기·해시를 확인할 수 없습니다", ErrInvalid)
+			return nil, fmt.Errorf("%w : The original text, size, and sash of the upload file cannot be checked", ErrInvalid)
 		}
 	}
 	// Result sanitization/export must never mutate the stored original upload.
 	uploadJSON, err := json.Marshal(evidence.Upload)
 	if err != nil {
-		return nil, fmt.Errorf("%w: 업로드 증거를 보존하지 못했습니다", ErrInvalid)
+		return nil, fmt.Errorf("%w: Failed to preserve upload evidence", ErrInvalid)
 	}
 	var upload UploadProvenance
 	if err = json.Unmarshal(uploadJSON, &upload); err != nil {
-		return nil, fmt.Errorf("%w: 업로드 증거를 보존하지 못했습니다", ErrInvalid)
+		return nil, fmt.Errorf("%w: Failed to preserve upload evidence", ErrInvalid)
 	}
 	out := newClosedLoopResult(q, baseline, candidate, "file_rule_evaluation")
 	out.Engine = "file-shadow-exact-contains-v1"
@@ -601,7 +601,7 @@ func EvaluateClosedLoopFile(c Config, q Query, scope investigation.Scope, mappin
 		out.warn(warning)
 	}
 	if evidence.WindowStart.After(q.Start) || evidence.WindowEnd.Before(q.End) {
-		out.warn("업로드 증거가 실행 전체 조회 구간을 포함하지 않습니다")
+		out.warn("Upload evidence does not include the entire execution lookup interval")
 	}
 	out.Truncated = evidence.Upload.Stats.Truncated
 	seen := map[string]string{}
@@ -612,30 +612,30 @@ func EvaluateClosedLoopFile(c Config, q Query, scope investigation.Scope, mappin
 		out.TotalRows++
 		if out.TotalRows > investigation.MaxEvents {
 			out.Truncated++
-			out.warn("파일 규칙 평가의 이벤트 보존 한도를 초과했습니다")
+			out.warn("Exceeded the event retention limit for file rule evaluation")
 			continue
 		}
 		fields, fallback, err := closedLoopObjects(event.Raw)
 		if err != nil {
-			out.warn("파일 원본 이벤트를 해석하지 못했습니다")
+			out.warn("Failed to interpret file original event")
 			continue
 		}
 		if event.CorrelationID != q.CorrelationID || event.OccurredAt.Before(q.Start) || !event.OccurredAt.Before(q.End) ||
 			closedLoopScalar(closedLoopValue(fields, fallback, mapping.VerificationID)) != q.CorrelationID ||
 			!investigation.MatchTarget(closedLoopScalar(closedLoopValue(fields, fallback, mapping.Target)), scope.Target) ||
 			!investigation.MatchPath(closedLoopScalar(closedLoopValue(fields, fallback, mapping.Path)), scope.PathPrefix) {
-			out.warn("실행 UUID·대상·경로·시각 범위와 맞지 않는 파일 이벤트가 있습니다")
+			out.warn("There are file events that do not match the execution UUID, destination, path, and visual range")
 			continue
 		}
 		if previous, exists := seen[event.ID]; exists {
 			if previous != closedloop.Hash(event.Raw) {
-				out.warn("같은 파일 이벤트 ID에 서로 다른 로그가 있습니다")
+				out.warn("The same file event ID has different logs")
 			}
 			continue
 		}
 		seen[event.ID] = closedloop.Hash(event.Raw)
 		if closedLoopPayloadTruncated(fields, fallback) {
-			out.warn("파일 원본 요청 필드가 잘렸습니다. 전체 요청에 대한 규칙 결과는 확인할 수 없습니다")
+			out.warn("The file source request field has been sleak. The result of the rule for the entire request cannot be determined.")
 		}
 		out.Events = append(out.Events, ClosedLoopRuleEvent{EventID: event.ID, OccurredAt: event.OccurredAt,
 			Baseline: matchClosedLoopRule(fields, fallback, baseline), Candidate: matchClosedLoopRule(fields, fallback, candidate), Raw: append(json.RawMessage(nil), event.Raw...)})

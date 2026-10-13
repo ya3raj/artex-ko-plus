@@ -13,7 +13,7 @@ const (
 	MaxTaskAssetMutationCount = 100
 	MaxTaskAssetSummaryRunes  = 500
 	defaultTaskAssetSource    = "system"
-	manualTaskScopeSummary    = "사용자가 테스트 자산 페이지에서 직접 추가"
+	manualTaskScopeSummary    = "Users add directly from the Test Assets page"
 )
 
 var (
@@ -145,7 +145,7 @@ func (s *AssetStore) RegisterTaskAssetScopes(taskID int64, inputs []ScopeInput) 
 	for index, input := range inputs {
 		rule, err := ParseScopeInput(input)
 		if err != nil {
-			return mutation, fmt.Errorf("%w: 第 %d 条范围无效: %v", ErrTaskAssetInvalid, index+1, err)
+			return mutation, fmt.Errorf("%w: %d Scope of Article invalid: %v", ErrTaskAssetInvalid, index+1, err)
 		}
 		parsed = append(parsed, rule)
 	}
@@ -201,7 +201,7 @@ func (s *AssetStore) RegisterTaskAssetScopes(taskID int64, inputs []ScopeInput) 
 			taskScope.Net = rule.Net
 			ip, _, parseErr := net.ParseCIDR(rule.Net)
 			if parseErr != nil {
-				return mutation, fmt.Errorf("%w: 无效 IP: %s", ErrTaskAssetInvalid, rule.Raw)
+				return mutation, fmt.Errorf("%w: Invalid IP: %s", ErrTaskAssetInvalid, rule.Raw)
 			}
 			ipValue := ip.String()
 			var alreadyLinked bool
@@ -372,37 +372,7 @@ WHERE task_id=$1 AND asset_id=ANY($2::bigint[])`, taskID, ids)
 // task's direct sources. Inherited non-terminal intents remain hidden, matching
 // the existing source-aware session contract.
 func (s *AssetStore) IntentAssets(taskID int64) ([]IntentAsset, error) {
-	rows, err := s.db.Query(`
-WITH context AS (
-    SELECT task.id AS task_id, task.exploration_id, false AS inherited
-    FROM tasks task
-    WHERE task.id=$1 AND task.deleted_at IS NULL
-    UNION ALL
-    SELECT source.id, source.exploration_id, true
-    FROM task_relations relation
-    JOIN tasks source ON source.id=relation.source_task_id AND source.deleted_at IS NULL
-    WHERE relation.task_id=$1
-)
-SELECT intent.id, asset.id, asset.type,
-       CASE asset.type
-         WHEN 'root_domain' THEN COALESCE(asset.domain,'')
-         WHEN 'subdomain' THEN COALESCE(asset.domain,'')
-         WHEN 'ip' THEN COALESCE(asset.ip,'')
-         WHEN 'app' THEN COALESCE(asset.app_name,'')
-		 WHEN 'service' THEN COALESCE(NULLIF(asset.url,''), NULLIF(concat_ws(':', COALESCE(NULLIF(asset.domain,''), NULLIF(asset.ip,'')), asset.port::text),''), NULLIF(asset.service_name,''), '#' || asset.id::text)
-         WHEN 'endpoint' THEN COALESCE(NULLIF(asset.url,''), '#' || asset.id::text)
-         ELSE '#' || asset.id::text
-       END,
-       COALESCE(link.source,'anchor'),
-       COALESCE(NULLIF(link.source_summary,''), '의도가 앵커로 연결한 자산'),
-       link.source_node_id, context.task_id, context.inherited
-FROM context
-JOIN exploration_nodes intent ON intent.exploration_id=context.exploration_id AND intent.kind='intent'
-JOIN exploration_anchors anchor ON anchor.node_id=intent.id
-JOIN assets asset ON asset.id=anchor.asset_id
-LEFT JOIN task_asset_links link ON link.task_id=context.task_id AND link.asset_id=asset.id
-WHERE NOT context.inherited OR intent.state IN ('done','blocked','exhausted','stopped')
-ORDER BY context.inherited, intent.id DESC, asset.id`, taskID)
+	rows, err := s.db.Query("\nWITH context AS (\n    SELECT task.id AS task_id, task.exploration_id, false AS inherited\n    FROM tasks task\n    WHERE task.id=$1 AND task.deleted_at IS NULL\n    UNION ALL\n    SELECT source.id, source.exploration_id, true\n    FROM task_relations relation\n    JOIN tasks source ON source.id=relation.source_task_id AND source.deleted_at IS NULL\n    WHERE relation.task_id=$1\n)\nSELECT intent.id, asset.id, asset.type,\n       CASE asset.type\n         WHEN 'root_domain' THEN COALESCE(asset.domain,'')\n         WHEN 'subdomain' THEN COALESCE(asset.domain,'')\n         WHEN 'ip' THEN COALESCE(asset.ip,'')\n         WHEN 'app' THEN COALESCE(asset.app_name,'')\n\t\t WHEN 'service' THEN COALESCE(NULLIF(asset.url,''), NULLIF(concat_ws(':', COALESCE(NULLIF(asset.domain,''), NULLIF(asset.ip,'')), asset.port::text),''), NULLIF(asset.service_name,''), '#' || asset.id::text)\n         WHEN 'endpoint' THEN COALESCE(NULLIF(asset.url,''), '#' || asset.id::text)\n         ELSE '#' || asset.id::text\n       END,\n       COALESCE(link.source,'anchor'),\n       COALESCE(NULLIF(link.source_summary,'''), 'The asset with the anchor',\n       link.source_node_id, context.task_id, context.inherited\nFROM context\nJOIN exploration_nodes intent ON intent.exploration_id=context.exploration_id AND intent.kind='intent'\nJOIN exploration_anchors anchor ON anchor.node_id=intent.id\nJOIN assets asset ON asset.id=anchor.asset_id\nLEFT JOIN task_asset_links link ON link.task_id=context.task_id AND link.asset_id=asset.id\nWHERE NOT context.inherited OR intent.state IN ('done','blocked','exhausted','stopped')\nORDER BY context.inherited, intent.id DESC, asset.id", taskID)
 	if err != nil {
 		return nil, err
 	}

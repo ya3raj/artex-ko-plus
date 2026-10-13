@@ -77,7 +77,7 @@ export const sidebarItems: NavGroup[] = [
           { id: "offensive-overview", title: "Offensive overview", url: "/offensive", icon: LayoutDashboard },
           {
             id: "offensive-assessments",
-            title: "API · 소스 코드 진단",
+            title: "API · Source Code Diagnostics",
             url: "/offensive/assessments",
             icon: ClipboardList,
           },

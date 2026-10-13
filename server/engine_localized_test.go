@@ -10,7 +10,7 @@ import (
 )
 
 // engine.go 의 작업 제어·의도 개입 오류 중 "사용자 노출" 문구를 한국어로 유지하는 회귀
-// 방어 테스트다. 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를
+// 방어 테스트다. 한국어 판정은 F3a 가 만든 assertEnglishError(한글 포함·중국어 한자 0)를
 // 재사용한다.
 //
 // 호출 그래프 판정(engine.go 상수 블록 주석 참조):
@@ -36,7 +36,7 @@ func TestControlWorkNoRunningWorkErrorLocalized(t *testing.T) {
 	if !errors.Is(err, errWorkControlConflict) {
 		t.Fatalf("errors.Is(err, errWorkControlConflict) = false, err=%v", err)
 	}
-	assertKoreanError(t, "control_work_no_running", err.Error())
+	assertEnglishError(t, "control_work_no_running", err.Error())
 }
 
 // TestEngineUserFacingErrorsLocalized 는 엔진/DB 게이트나 고루틴 타이밍 뒤에 있어 끝까지
@@ -51,6 +51,6 @@ func TestEngineUserFacingErrorsLocalized(t *testing.T) {
 		{"detached_worker_not_ready", errDetachedWorkerNotReady},
 		{"detached_state_conflict", fmt.Errorf(errIntentCtrlStateConflictFmt, db.ErrIntentStateConflict).Error()},
 	} {
-		assertKoreanError(t, c.label, c.msg)
+		assertEnglishError(t, c.label, c.msg)
 	}
 }

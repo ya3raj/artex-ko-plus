@@ -9,7 +9,7 @@ import (
 )
 
 // server.go 의 사용자 노출 응답을 한국어로 유지하는 회귀 방어 테스트다(F3b-server.go +
-// F34). 한국어 판정은 F3a 의 assertKoreanError(한글 포함·중국어 한자 0)를, 응답 본문
+// F34). 한국어 판정은 F3a 의 assertEnglishError(한글 포함·중국어 한자 0)를, 응답 본문
 // 추출은 task_categories 테스트의 decodeErrorField 를 재사용한다(같은 package server).
 // 범위는 ① F3b: writeErr 24곳 + validateTaskProfileIDs 가 writeErr 로 노출하는
 // fmt.Errorf 2곳, ② F34: writeErr 를 거치지 않는 사용자 노출 5곳(chatUnavailableReason
@@ -50,7 +50,7 @@ func TestServerErrorConstantsLocalized(t *testing.T) {
 		"fallback_hint":   fallbackHintRecorded,
 	}
 	for label, msg := range plain {
-		assertKoreanError(t, label, msg)
+		assertEnglishError(t, label, msg)
 	}
 
 	formatted := map[string]string{
@@ -62,7 +62,7 @@ func TestServerErrorConstantsLocalized(t *testing.T) {
 		"fallback_status": fmt.Sprintf(fallbackChatStatus, 3, 2, 1),
 	}
 	for label, msg := range formatted {
-		assertKoreanError(t, label, msg)
+		assertEnglishError(t, label, msg)
 	}
 }
 
@@ -248,7 +248,7 @@ func TestServerHandlersResponsesLocalized(t *testing.T) {
 			if got != c.want {
 				t.Fatalf("응답 문구 = %q, 기대 = %q", got, c.want)
 			}
-			assertKoreanError(t, c.name, got)
+			assertEnglishError(t, c.name, got)
 		})
 	}
 }
@@ -264,7 +264,7 @@ func TestChatUnavailableReasonLocalized(t *testing.T) {
 	if got != errChatLLMNotReady {
 		t.Fatalf("chatUnavailableReason() = %q, 기대 = %q", got, errChatLLMNotReady)
 	}
-	assertKoreanError(t, "chat_not_ready", got)
+	assertEnglishError(t, "chat_not_ready", got)
 }
 
 // TestFallbackCommandParsing 은 규칙 모드 채팅의 트리거 키워드 파싱(fallbackCommand)이 한국어

@@ -86,7 +86,7 @@ func uploadInvalid(message string) error { return fmt.Errorf("%w: %s", ErrInvali
 func ValidateFileConfig(c FileConfig) (FileConfig, error) {
 	c.Label = strings.TrimSpace(c.Label)
 	if !utf8.ValidString(c.Label) || strings.ContainsRune(c.Label, 0) || utf8.RuneCountInString(c.Label) < 1 || utf8.RuneCountInString(c.Label) > 120 {
-		return c, uploadInvalid("파일 증거 이름은 1~120자로 입력해 주세요")
+		return c, uploadInvalid("Please enter the file proof name in 1 to 120 characters.")
 	}
 	fields := []struct {
 		value    *string
@@ -102,10 +102,10 @@ func ValidateFileConfig(c FileConfig) (FileConfig, error) {
 			*item.value = item.fallback
 		}
 		if !fieldName.MatchString(*item.value) {
-			return c, uploadInvalid("필드 이름은 영문·숫자·밑줄·점·하이픈을 사용해 128자 이내로 입력해 주세요")
+			return c, uploadInvalid("Please enter the field name in English, number, underscore, dot, hyphen, and less than 128characters.")
 		}
 		if seen[*item.value] {
-			return c, uploadInvalid("시각·실행 UUID·조치·이벤트 ID는 서로 다른 필드에 매핑해 주세요")
+			return c, uploadInvalid("Visual, Execution UUID, Measure, Event IDs can be mapped to different fields.")
 		}
 		seen[*item.value] = true
 	}
@@ -122,20 +122,20 @@ func ParseUpload(c FileConfig, in FileUpload, q Query) (*Evidence, error) {
 	}
 	now := time.Now().UTC()
 	if !correlationName.MatchString(q.CorrelationID) || q.Start.IsZero() || !q.End.After(q.Start) || q.End.Sub(q.Start) > 24*time.Hour || q.End.After(now.Add(5*time.Second)) {
-		return nil, uploadInvalid("실행 식별자와 조회 시간 범위를 확인해 주세요 (최대 24시간)")
+		return nil, uploadInvalid("Please check the execution identifier and the search time range (up to 24h)")
 	}
 	if in.CoverageStart.IsZero() || !in.CoverageEnd.After(in.CoverageStart) || in.CoverageEnd.Sub(in.CoverageStart) > 24*time.Hour || in.CoverageEnd.After(now) {
-		return nil, uploadInvalid("파일의 수집 구간은 과거의 시작·종료 시각으로 지정해 주세요 (최대 24시간)")
+		return nil, uploadInvalid("Please specify the collection interval of the file as the time of the beginning and end of the past (up to 24hours)")
 	}
 	if in.AlertFile != nil && in.NoAlerts {
-		return nil, uploadInvalid("경보 파일 업로드와 경보 없음 확인 중 하나만 선택해 주세요")
+		return nil, uploadInvalid("Please select either the alarm file upload and check the alarm.")
 	}
 	total := len(in.AuditFile.Content)
 	if in.AlertFile != nil {
 		total += len(in.AlertFile.Content)
 	}
 	if total > MaxUploadBytes {
-		return nil, uploadInvalid("업로드 파일 원문 합계는 4 MiB 이하여야 합니다")
+		return nil, uploadInvalid("The total of the original upload file must be less than 4 MiB")
 	}
 	out := &Evidence{Events: []Event{}, Complete: true, CollectedAt: now, WindowStart: in.CoverageStart.UTC(), WindowEnd: in.CoverageEnd.UTC(), Warnings: []string{}, Diagnostics: []Diagnostic{},
 		Upload: &UploadProvenance{Config: c, Files: []UploadedFileEvidence{}, CoverageComplete: in.CoverageComplete, NoAlerts: in.NoAlerts}}
@@ -147,16 +147,16 @@ func ParseUpload(c FileConfig, in FileUpload, q Query) (*Evidence, error) {
 		}
 	}
 	if !in.CoverageComplete {
-		diagnostic("upload_coverage_unconfirmed", "업로드 로그의 수집 범위 완전성이 확인되지 않았습니다", "해당 시간 구간의 감사·경보 검색 결과를 빠짐없이 내보냈는지 확인하세요", true)
+		diagnostic("upload_coverage_unconfirmed", "Collection scope of upload log completeness has not been confirmed", "Make sure you have exported all the audit and warning search results for the time period.", true)
 	}
 	if in.CoverageStart.After(q.Start) || in.CoverageEnd.Before(q.End) {
-		diagnostic("upload_window_incomplete", "파일의 수집 구간이 실행의 전체 조회 구간을 포함하지 않습니다", "실행 시작 30초 전부터 종료 후 대기 구간까지 포함하여 다시 내보내세요", true)
+		diagnostic("upload_window_incomplete", "The collection interval of the file does not include the entire view interval of the execution", "Start running thirty seconds before and exit, and export again, including the waiting interval", true)
 	}
 	if in.AlertFile == nil && !in.NoAlerts {
-		diagnostic("upload_alert_evidence_missing", "경보 파일 또는 해당 구간의 경보 없음 확인이 없습니다", "같은 UUID와 구간으로 조회한 경보 파일을 올리거나 실제 검색 후 경보 없음을 확인하세요", true)
+		diagnostic("upload_alert_evidence_missing", "No alarm file or no alarm for the corresponding interval", "Upload the alarm file viewed with the same UUID and 구간, or check that there is no alarm after actual search", true)
 	}
 	if in.NoAlerts {
-		diagnostic("upload_no_alerts_attested", "사용자가 해당 구간에 경보가 없음을 명시했습니다", "이 확인은 자동 SIEM 조회 결과가 아닙니다. 검색 조건과 원본 검색 결과를 별도로 확인하세요", false)
+		diagnostic("upload_no_alerts_attested", "The user has specified that there is no alarm in the section", "This check is not an automatic SIEM lookup result. Please check the search terms and conditions for the original search results separately", false)
 	}
 	files := []struct {
 		kind string
@@ -179,16 +179,16 @@ func ParseUpload(c FileConfig, in FileUpload, q Query) (*Evidence, error) {
 		}
 		invalidDetails++
 		out.Diagnostics = append(out.Diagnostics, Diagnostic{Code: code, Certainty: "observed", FileName: file, Line: line,
-			Message: fmt.Sprintf("필드 %s: %s", fieldName, message), Recommendation: "해당 파일·행의 원문과 실행 당시 필드 매핑을 확인하세요. 이 관측만으로 수집기나 장비 고장을 단정할 수 없습니다"})
+			Message: fmt.Sprintf("Field %s: %s", fieldName, message), Recommendation: "Check the original text of the file and the field mapping at the time of execution. This observation alone cannot determine the collector or equipment failure."})
 	}
 	unknownActionIDs := []string{}
 	for _, item := range files {
 		file := item.file
 		if !utf8.ValidString(file.Name) || strings.TrimSpace(file.Name) == "" || len(file.Name) > 255 || strings.ContainsAny(file.Name, "\x00\r\n") {
-			return nil, uploadInvalid("파일 이름은 비어 있지 않은 UTF-8 문자열이어야 하며 255바이트 이하여야 합니다")
+			return nil, uploadInvalid("The file name must be an unempty UTF-8 string and must be less than 255 bytes")
 		}
 		if !utf8.ValidString(file.Content) || strings.ContainsRune(file.Content, 0) {
-			return nil, uploadInvalid("파일 원문은 NUL 문자가 없는 UTF-8 텍스트여야 합니다")
+			return nil, uploadInvalid("The original text of the file must be UTF-8 text without NUL characters")
 		}
 		sum := sha256.Sum256([]byte(file.Content))
 		provenance := UploadedFileEvidence{Kind: item.kind, Name: file.Name, SHA256: hex.EncodeToString(sum[:]), Bytes: len(file.Content), Content: file.Content}
@@ -197,16 +197,16 @@ func ParseUpload(c FileConfig, in FileUpload, q Query) (*Evidence, error) {
 			stats := &out.Upload.Stats
 			stats.TotalRows++
 			if stats.TotalRows > MaxUploadRows {
-				return uploadInvalid("파일의 이벤트 합계는 5000개 이하여야 합니다")
+				return uploadInvalid("The total number of events in the file must be less than five thousand.")
 			}
 			correlationValue := field(fields, c.CorrelationField)
 			correlation, ok := correlationValue.(string)
 			if correlationValue == nil || ok && correlation == "" {
-				invalidEvent("upload_missing_correlation", file.Name, line, c.CorrelationField, "실행 UUID가 없거나 비어 있습니다")
+				invalidEvent("upload_missing_correlation", file.Name, line, c.CorrelationField, "Run UUID is missing or empty")
 				return nil
 			}
 			if !ok {
-				invalidEvent("upload_invalid_correlation", file.Name, line, c.CorrelationField, "실행 UUID가 문자열이 아닙니다")
+				invalidEvent("upload_invalid_correlation", file.Name, line, c.CorrelationField, "Run UUID is not a string")
 				return nil
 			}
 			if correlation != q.CorrelationID {
@@ -215,12 +215,12 @@ func ParseUpload(c FileConfig, in FileUpload, q Query) (*Evidence, error) {
 			}
 			timestampValue := field(fields, c.TimestampField)
 			if timestampValue == nil {
-				invalidEvent("upload_missing_timestamp", file.Name, line, c.TimestampField, "이벤트 시각이 없습니다")
+				invalidEvent("upload_missing_timestamp", file.Name, line, c.TimestampField, "There is no event time.")
 				return nil
 			}
 			occurred, timeErr := eventTime(timestampValue)
 			if timeErr != nil {
-				invalidEvent("upload_invalid_timestamp", file.Name, line, c.TimestampField, "시각을 RFC 3339 또는 Unix 초로 해석할 수 없습니다")
+				invalidEvent("upload_invalid_timestamp", file.Name, line, c.TimestampField, "You cannot interpret the time as RFC 3339 or Unix seconds.")
 				return nil
 			}
 			if occurred.Before(q.Start) || !occurred.Before(q.End) || occurred.Before(in.CoverageStart) || !occurred.Before(in.CoverageEnd) {
@@ -229,10 +229,10 @@ func ParseUpload(c FileConfig, in FileUpload, q Query) (*Evidence, error) {
 			}
 			raw, err := json.Marshal(fields)
 			if err != nil {
-				return uploadInvalid("이벤트 원문을 보존하지 못했습니다")
+				return uploadInvalid("Failed to preserve the original text of the event")
 			}
 			if len(raw) > MaxUploadRecordBytes {
-				return uploadInvalid("정규화한 이벤트 하나는 128 KiB 이하여야 합니다")
+				return uploadInvalid("One normalized event must be 128 KiB or less.")
 			}
 			payloadHash := sha256.Sum256(raw)
 			id := ""
@@ -243,14 +243,14 @@ func ParseUpload(c FileConfig, in FileUpload, q Query) (*Evidence, error) {
 			case json.Number:
 				id = value.String()
 			default:
-				invalidEvent("upload_invalid_event_id", file.Name, line, c.EventIDField, "이벤트 ID가 문자열 또는 숫자가 아닙니다")
+				invalidEvent("upload_invalid_event_id", file.Name, line, c.EventIDField, "Event ID is not a string or number")
 				return nil
 			}
 			if id == "" {
 				id = "sha256:" + hex.EncodeToString(payloadHash[:])
 			}
 			if len(id) > 1024 {
-				invalidEvent("upload_invalid_event_id", file.Name, line, c.EventIDField, "이벤트 ID가 1024바이트를 넘습니다")
+				invalidEvent("upload_invalid_event_id", file.Name, line, c.EventIDField, "Event ID is over 1024bytes")
 				return nil
 			}
 			key := item.kind + ":" + id
@@ -290,32 +290,32 @@ func ParseUpload(c FileConfig, in FileUpload, q Query) (*Evidence, error) {
 		out.Upload.Files = append(out.Upload.Files, provenance)
 	}
 	if len(out.Upload.Files) == 2 && out.Upload.Files[0].Bytes > 0 && out.Upload.Files[0].SHA256 == out.Upload.Files[1].SHA256 {
-		diagnostic("upload_duplicate_sources", "감사 파일과 경보 파일의 원문이 같습니다. 감사 로그의 복사본만으로 탐지 경보를 확인할 수 없습니다", "실제 탐지 시스템에서 별도로 내보낸 경보 파일을 선택하세요. 서로 다른 파일도 출처의 진위까지 자동 검증되지는 않습니다", true)
+		diagnostic("upload_duplicate_sources", "The original text of the audit file and the alarm file are the same. Only a copy of the audit log cannot determine the detection alarm", "Select the alarm file exported separately from the actual detection system. Different files are not automatically verified to the authenticity of the source", true)
 	}
 	stats := out.Upload.Stats
 	if stats.InvalidEvents > 0 {
-		diagnostic("upload_invalid_events", fmt.Sprintf("UUID·시각·이벤트 ID를 확인할 수 없는 이벤트 %d개가 제외됐습니다", stats.InvalidEvents), "파일 필드 매핑과 시각 형식을 확인하세요. 필드 누락만으로 수집기 고장을 단정할 수 없습니다", true)
+		diagnostic("upload_invalid_events", fmt.Sprintf("Excluded event %d that could not be verified with UUID, time, or event ID", stats.InvalidEvents), "Check file field mapping and visual format. Missing fields does not determine collector failure", true)
 	}
 	if stats.Unrelated > 0 {
-		diagnostic("upload_other_execution", fmt.Sprintf("다른 실행 UUID의 이벤트 %d개가 제외됐습니다", stats.Unrelated), "선택한 실행의 UUID가 원본 요청과 감사·경보 로그에 동일하게 기록됐는지 확인하세요", false)
+		diagnostic("upload_other_execution", fmt.Sprintf("Excluded %d events belonging to other execution UUIDs", stats.Unrelated), "Make sure that the UUID of the selected execution is recorded in the same as the original request and the audit and alert logs.", false)
 	}
 	if stats.OutsideWindow > 0 {
-		diagnostic("upload_outside_window", fmt.Sprintf("조회 또는 파일 수집 구간 밖의 이벤트 %d개가 제외됐습니다", stats.OutsideWindow), "로그 시각·시간대와 실행 및 파일 수집 구간을 확인하세요", false)
+		diagnostic("upload_outside_window", fmt.Sprintf("Excluded events %d outside the lookup or file collection section", stats.OutsideWindow), "Check the log time and time zone and execution and file collection intervals", false)
 	}
 	if stats.DuplicateEvents > 0 {
-		diagnostic("upload_duplicate_events", fmt.Sprintf("중복 이벤트 ID %d개가 제외됐습니다", stats.DuplicateEvents), "이벤트 ID가 출처 내에서 고유한지 확인하세요. 동일한 원문의 중복은 한 번만 셉니다", false)
+		diagnostic("upload_duplicate_events", fmt.Sprintf("Duplicate event ID %d is excluded", stats.DuplicateEvents), "Make sure the event ID is unique within the source. Redundancy of the same original text is only once.", false)
 	}
 	if conflicts > 0 {
-		diagnostic("upload_conflicting_events", fmt.Sprintf("같은 이벤트 ID에 서로 다른 원문 %d개가 있어 판정을 보류합니다", conflicts), "충돌한 로그의 원래 출처와 이벤트 식별 필드를 확인하고 고유한 ID로 다시 내보내세요", true)
+		diagnostic("upload_conflicting_events", fmt.Sprintf("The same event ID has a different original %d one, pending the decision.", conflicts), "Check the original origin of the conflicted log and the event identification field and export it back to your unique ID", true)
 	}
 	if stats.Truncated > 0 {
-		diagnostic("upload_event_limit", fmt.Sprintf("종류별 200개 한도를 넘는 이벤트 %d개가 있어 판정을 보류합니다", stats.Truncated), "동일 실행의 로그 범위와 중복 수집 여부를 확인하세요", true)
+		diagnostic("upload_event_limit", fmt.Sprintf("There are more than two hundred events %d by type, so we will hold the verdict", stats.Truncated), "Check the log range of the same execution and whether it is duplicated", true)
 	}
 	if unknownActions > 0 {
-		out.Diagnostics = append(out.Diagnostics, Diagnostic{Code: "upload_action_unknown", Certainty: "observed", Message: fmt.Sprintf("감사 이벤트 %d개의 차단·허용 조치를 해석할 수 없습니다", unknownActions), Recommendation: "실제 정책 조치를 기록한 필드를 매핑하세요. HTTP 상태 코드로 차단 여부를 대신 판정하지 않습니다", EventIDs: unknownActionIDs})
+		out.Diagnostics = append(out.Diagnostics, Diagnostic{Code: "upload_action_unknown", Certainty: "observed", Message: fmt.Sprintf("Cannot interpret the blocking and permiting measures of audit events %d", unknownActions), Recommendation: "Map fields that record actual policy actions. Do not determine whether to block with HTTP status code instead", EventIDs: unknownActionIDs})
 	}
 	if counts["audit"] == 0 {
-		diagnostic("upload_audit_missing", "선택한 실행과 조회 구간에 해당하는 감사 이벤트가 없습니다", "파일 선택·UUID 전달·필드 매핑·시각 구간을 확인하세요. 감사 이벤트 부재만으로 미탐을 판정하지 않습니다", true)
+		diagnostic("upload_audit_missing", "There are no audit events for the selected execution and lookup intervals", "Check the file selection, UUID forwarding, field mapping, and visual section. The absence of audit events does not determine the missing person.", true)
 	}
 	return out, nil
 }
@@ -333,7 +333,7 @@ func readUploadRows(file UploadFile, consume func(map[string]any, int) error) er
 	if ext != ".json" && ext != ".jsonl" && ext != ".ndjson" && !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
 		firstLine, _, _ := strings.Cut(trimmed, "\n")
 		if !strings.Contains(firstLine, ",") {
-			return uploadInvalid("JSON 객체 배열·JSONL 또는 쉼표로 구분된 CSV 파일이 필요합니다")
+			return uploadInvalid("Requires JSON object array, JSONL or comma-separated CSV file")
 		}
 		return readUploadCSV(content, consume)
 	}
@@ -341,7 +341,7 @@ func readUploadRows(file UploadFile, consume func(map[string]any, int) error) er
 		d := json.NewDecoder(strings.NewReader(content))
 		d.UseNumber()
 		if _, err := d.Token(); err != nil {
-			return uploadInvalid("JSON 배열 문법이 올바르지 않습니다")
+			return uploadInvalid("JSON array syntax is not correct")
 		}
 		line, lineOffset := 1, 0
 		for d.More() {
@@ -358,21 +358,21 @@ func readUploadRows(file UploadFile, consume func(map[string]any, int) error) er
 				return err
 			}
 			if d.InputOffset()-start > MaxUploadRecordBytes {
-				return uploadInvalid("이벤트 하나는 128 KiB 이하여야 합니다")
+				return uploadInvalid("One event must be 128 KiB or less.")
 			}
 			object, ok := value.(map[string]any)
 			if !ok {
-				return uploadInvalid("JSON 배열의 각 이벤트는 객체여야 합니다")
+				return uploadInvalid("Each event in a JSON array must be an object")
 			}
 			if err := consume(object, line); err != nil {
 				return err
 			}
 		}
 		if close, err := d.Token(); err != nil || close != json.Delim(']') {
-			return uploadInvalid("JSON 배열이 완전하지 않습니다")
+			return uploadInvalid("JSON array is not complete")
 		}
 		if _, err := d.Token(); err != io.EOF {
-			return uploadInvalid("JSON 배열 뒤에 추가 데이터가 있습니다")
+			return uploadInvalid("There is additional data after the JSON array")
 		}
 		return nil
 	}
@@ -384,7 +384,7 @@ func readUploadRows(file UploadFile, consume func(map[string]any, int) error) er
 			continue
 		}
 		if len(raw) > MaxUploadRecordBytes {
-			return uploadInvalid("이벤트 하나는 128 KiB 이하여야 합니다")
+			return uploadInvalid("One event must be 128 KiB or less.")
 		}
 		d := json.NewDecoder(strings.NewReader(raw))
 		d.UseNumber()
@@ -395,17 +395,17 @@ func readUploadRows(file UploadFile, consume func(map[string]any, int) error) er
 		}
 		object, ok := value.(map[string]any)
 		if !ok {
-			return uploadInvalid("JSONL의 각 행은 JSON 객체여야 합니다")
+			return uploadInvalid("Each row of JSONL must be a JSON object")
 		}
 		if _, err := d.Token(); err != io.EOF {
-			return uploadInvalid("JSON 객체 뒤에 추가 데이터가 있습니다")
+			return uploadInvalid("There is additional data after the JSON object")
 		}
 		if err := consume(object, line); err != nil {
 			return err
 		}
 	}
 	if scan.Err() != nil {
-		return uploadInvalid("이벤트 하나는 128 KiB 이하여야 하며 완전한 UTF-8 행이어야 합니다")
+		return uploadInvalid("One event must be less than 128 KiB and must be in full UTF-8 row.")
 	}
 	return nil
 }
@@ -414,12 +414,12 @@ func readUploadCSV(content string, consume func(map[string]any, int) error) erro
 	r := csv.NewReader(strings.NewReader(content))
 	header, err := r.Read()
 	if err != nil || len(header) == 0 || r.InputOffset() > MaxUploadRecordBytes || len(header) > 256 {
-		return uploadInvalid("CSV 첫 행에는 256개 이하의 고유한 필드 이름이 필요합니다")
+		return uploadInvalid("The first row of CSV requires a unique field name of no more than twenty-five.")
 	}
 	seen := map[string]bool{}
 	for _, key := range header {
 		if key == "" || len(key) > 128 || seen[key] {
-			return uploadInvalid("CSV 필드 이름이 비어 있거나 중복되거나 128바이트를 넘습니다")
+			return uploadInvalid("CSV field name is empty or duplicated or over 128bytes")
 		}
 		seen[key] = true
 	}
@@ -430,10 +430,10 @@ func readUploadCSV(content string, consume func(map[string]any, int) error) erro
 			return nil
 		}
 		if err != nil {
-			return uploadInvalid("CSV 인용부호 또는 열 개수가 올바르지 않습니다")
+			return uploadInvalid("The CSV quotation mark or number of columns is incorrect")
 		}
 		if r.InputOffset()-start > MaxUploadRecordBytes {
-			return uploadInvalid("CSV 이벤트 하나는 128 KiB 이하여야 합니다")
+			return uploadInvalid("One CSV event must be 128 KiB or less")
 		}
 		line, _ := r.FieldPos(0)
 		object := make(map[string]any, len(header))
@@ -450,15 +450,15 @@ func readUploadCSV(content string, consume func(map[string]any, int) error) erro
 // nesting/values independently from the byte limit. Numbers remain json.Number.
 func readUploadJSONValue(d *json.Decoder, depth int, count *int) (any, error) {
 	if depth > 16 {
-		return nil, uploadInvalid("JSON 중첩은 16단계 이하여야 합니다")
+		return nil, uploadInvalid("JSON nesting should be less than sixteen steps")
 	}
 	*count = *count + 1
 	if *count > 4096 {
-		return nil, uploadInvalid("이벤트의 값은 4096개 이하여야 합니다")
+		return nil, uploadInvalid("The value of the event must be less than 4096pcs")
 	}
 	token, err := d.Token()
 	if err != nil {
-		return nil, uploadInvalid("JSON 문법이 올바르지 않습니다")
+		return nil, uploadInvalid("JSON syntax is not correct")
 	}
 	switch value := token.(type) {
 	case json.Delim:
@@ -468,10 +468,10 @@ func readUploadJSONValue(d *json.Decoder, depth int, count *int) (any, error) {
 				keyToken, err := d.Token()
 				key, ok := keyToken.(string)
 				if err != nil || !ok || len(key) > 128 || strings.ContainsRune(key, 0) {
-					return nil, uploadInvalid("JSON 필드 이름은 NUL 없이 128바이트 이하여야 합니다")
+					return nil, uploadInvalid("The JSON field name must be 128bytes or less without NUL")
 				}
 				if _, exists := object[key]; exists {
-					return nil, uploadInvalid("중복된 JSON 필드 이름은 허용하지 않습니다")
+					return nil, uploadInvalid("Duplicate JSON field names are not allowed")
 				}
 				child, err := readUploadJSONValue(d, depth+1, count)
 				if err != nil {
@@ -480,7 +480,7 @@ func readUploadJSONValue(d *json.Decoder, depth int, count *int) (any, error) {
 				object[key] = child
 			}
 			if close, err := d.Token(); err != nil || close != json.Delim('}') {
-				return nil, uploadInvalid("JSON 객체가 완전하지 않습니다")
+				return nil, uploadInvalid("JSON objects are not complete")
 			}
 			return object, nil
 		}
@@ -494,25 +494,25 @@ func readUploadJSONValue(d *json.Decoder, depth int, count *int) (any, error) {
 				array = append(array, child)
 			}
 			if close, err := d.Token(); err != nil || close != json.Delim(']') {
-				return nil, uploadInvalid("JSON 배열이 완전하지 않습니다")
+				return nil, uploadInvalid("JSON array is not complete")
 			}
 			return array, nil
 		}
-		return nil, uploadInvalid("JSON 값이 올바르지 않습니다")
+		return nil, uploadInvalid("JSON is not valid.")
 	case string:
 		if strings.ContainsRune(value, 0) || len(value) > MaxUploadRecordBytes {
-			return nil, uploadInvalid("JSON 문자열은 NUL 없이 128 KiB 이하여야 합니다")
+			return nil, uploadInvalid("The JSON string must be 128 KiB or less without NUL")
 		}
 	case json.Number:
 		if len(value) > 256 {
-			return nil, uploadInvalid("숫자 값은 256바이트 이하여야 합니다")
+			return nil, uploadInvalid("The number value should be less than 256bytes.")
 		}
 		// Preserve decimal precision without admitting exponents that cannot be
 		// represented by the evidence store's bounded JSONB numeric type.
 		if i := strings.IndexAny(value.String(), "eE"); i >= 0 {
 			exponent, err := strconv.Atoi(value.String()[i+1:])
 			if err != nil || exponent < -1000 || exponent > 1000 {
-				return nil, uploadInvalid("숫자의 지수는 -1000~1000 범위여야 합니다")
+				return nil, uploadInvalid("The exponent of numbers should be in the range of -1000 to 1000.")
 			}
 		}
 	}

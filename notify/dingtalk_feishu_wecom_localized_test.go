@@ -40,12 +40,12 @@ func mustJSON(t *testing.T, v any) string {
 // 별개로 이 핀이 있어야 飞书 본문만 중국어로 되돌아가는 회귀를 잡는다.
 func TestFeishuItemLinesLocalized(t *testing.T) {
 	got := feishuItemLines(asciiStatusChangeItem())
-	assertKorean(t, "feishuItemLines", got)
+	assertEnglish(t, "feishuItemLines", got)
 	for _, want := range []string{
-		"**상태 변경**: 처리 대기 → 수정됨",
-		"**유형**: SQLi",
-		"**자산**: a.example.com",
-		"**개요**: SQL injection via q param",
+		"**Status change**: Pending → Fixed",
+		"**Type**: SQLi",
+		"**Assets**: a.example.com",
+		"**Overview**: SQL injection via q param",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("飞书 단건 본문에 %q 가 있어야 합니다:\n%s", want, got)
@@ -62,7 +62,7 @@ func TestFeishuCardButtonsLocalized(t *testing.T) {
 	if hasHan(singleJSON) {
 		t.Errorf("단건 飞书 카드에 중국어 한자가 남았습니다:\n%s", singleJSON)
 	}
-	if !strings.Contains(singleJSON, "상세 보기") {
+	if !strings.Contains(singleJSON, "View details") {
 		t.Errorf("단건 飞书 카드에 '상세 보기' 버튼이 있어야 합니다:\n%s", singleJSON)
 	}
 
@@ -72,7 +72,7 @@ func TestFeishuCardButtonsLocalized(t *testing.T) {
 	if hasHan(batchJSON) {
 		t.Errorf("다건 飞书 카드에 중국어 한자가 남았습니다:\n%s", batchJSON)
 	}
-	if !strings.Contains(batchJSON, "플랫폼에서 전체 보기") {
+	if !strings.Contains(batchJSON, "View all on platform") {
 		t.Errorf("다건 飞书 카드에 '플랫폼에서 전체 보기' 버튼이 있어야 합니다:\n%s", batchJSON)
 	}
 }
@@ -89,7 +89,7 @@ func TestDingTalkActionCardButtonLocalized(t *testing.T) {
 	if _, err := (dingTalkChannel{}).Send(context.Background(), map[string]any{"webhook": srv.URL}, m); err != nil {
 		t.Fatalf("투递 실패: %v", err)
 	}
-	if singleTitle != "상세 보기" {
+	if singleTitle != "View details" {
 		t.Errorf("钉钉 ActionCard singleTitle 은 '상세 보기' 여야 합니다, 받은 값 %q", singleTitle)
 	}
 }
@@ -108,8 +108,8 @@ func TestChinaPlatformValidateLocalized(t *testing.T) {
 		if missing == nil {
 			t.Fatalf("%s: 빈 설정은 검증에 실패해야 합니다", kind)
 		}
-		assertKorean(t, kind+" missing", missing.Error())
-		if !strings.Contains(missing.Error(), "Webhook") || !strings.Contains(missing.Error(), "없습니다") {
+		assertEnglish(t, kind+" missing", missing.Error())
+		if !strings.Contains(missing.Error(), "Webhook") || !strings.Contains(missing.Error(), "required") {
 			t.Errorf("%s: 누락 오류는 'Webhook 주소가 없습니다' 여야 합니다, 받은 값 %q", kind, missing)
 		}
 
@@ -121,7 +121,7 @@ func TestChinaPlatformValidateLocalized(t *testing.T) {
 		if hasHan(bad.Error()) {
 			t.Errorf("%s: 잘못된 주소 오류에 중국어 한자가 남았습니다: %q", kind, bad)
 		}
-		if !strings.Contains(bad.Error(), "Webhook 주소가 올바르지 않습니다") {
+		if !strings.Contains(bad.Error(), "Invalid Webhook URL") {
 			t.Errorf("%s: 잘못된 주소 오류는 'Webhook 주소가 올바르지 않습니다' 로 시작해야 합니다, 받은 값 %q", kind, bad)
 		}
 	}
@@ -138,10 +138,10 @@ func TestChinaPlatformSendErrorsLocalized(t *testing.T) {
 		resp     string
 		wantSubs []string
 	}{
-		{KindDingTalk, `{"errcode":310000,"errmsg":"keyword not matched"}`, []string{"DingTalk에서 오류가 발생했습니다", "310000"}},
-		{KindFeishu, `{"code":19021,"msg":"sign error"}`, []string{"Feishu에서 오류가 발생했습니다", "19021"}},
-		{KindWeCom, `{"errcode":45009,"errmsg":"freq out of limit"}`, []string{"WeCom 요청이 제한되었습니다", "45009"}},
-		{KindWeCom, `{"errcode":93000,"errmsg":"invalid webhook"}`, []string{"WeCom에서 오류가 발생했습니다", "93000"}},
+		{KindDingTalk, `{"errcode":310000,"errmsg":"keyword not matched"}`, []string{"DingTalk encountered an error", "310000"}},
+		{KindFeishu, `{"code":19021,"msg":"sign error"}`, []string{"Feishu encountered an error", "19021"}},
+		{KindWeCom, `{"errcode":45009,"errmsg":"freq out of limit"}`, []string{"WeCom requests have been limited", "45009"}},
+		{KindWeCom, `{"errcode":93000,"errmsg":"invalid webhook"}`, []string{"WeCom has an error", "93000"}},
 	}
 	for _, tc := range bizCases {
 		srv := capturePost(t, tc.resp, nil)
@@ -182,7 +182,7 @@ func TestChinaPlatformSendErrorsLocalized(t *testing.T) {
 		if err == nil {
 			t.Fatalf("%s: JSON 이 아닌 응답은 오류여야 합니다", pc.kind)
 		}
-		want := pc.platform + " 응답을 해석하지 못했습니다"
+		want := pc.platform + " response could not be parsed"
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: 파싱 실패 오류에 %q 가 있어야 합니다, 받은 값 %q", pc.kind, want, err)
 		}

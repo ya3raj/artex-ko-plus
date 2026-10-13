@@ -10,9 +10,9 @@ import "testing"
 // OnToolCall·결정적) 들어가지 않는 순수 UI 라벨이다. 그래서 한국어화가 BRIEF 경계 #1
 // (두뇌 미번역)을 건드리지 않는다. 반대로 reporter 의 두뇌 본문(agent.ReporterDefaultPrompt)
 // 과 트리거 주입 메시지(reporterToolCallMessage)는 모델 입력이라 중국어 원문을 보존하므로
-// 이 테스트 대상이 아니다. 한국어 판정은 assertKoreanError(한글 포함·중국어 한자 0,
+// 이 테스트 대상이 아니다. 한국어 판정은 assertEnglishError(한글 포함·중국어 한자 0,
 // intercept_archive_localized_test.go)를 재사용한다. [[F35]] [[G133]]
 func TestReporterSeedLabelsLocalized(t *testing.T) {
-	assertKoreanError(t, "reporter_name", reporterAgentName)
-	assertKoreanError(t, "reporter_description", reporterAgentDescription)
+	assertEnglishError(t, "reporter_name", reporterAgentName)
+	assertEnglishError(t, "reporter_description", reporterAgentDescription)
 }

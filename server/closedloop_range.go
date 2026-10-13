@@ -141,14 +141,14 @@ func (s *Server) proxyClosedLoopRange(w http.ResponseWriter, r *http.Request, me
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if r.URL.RawQuery != "" {
-		writeErr(w, 400, "실습 연결 API에는 추가 조회 조건을 전달할 수 없습니다")
+		writeErr(w, 400, "The hands-on connection API cannot pass additional lookup conditions")
 		return
 	}
 	if strings.Contains(path, "{id}") {
 		id := r.PathValue("id")
 		parsed, err := uuid.Parse(id)
 		if err != nil || parsed.String() != strings.ToLower(id) {
-			writeErr(w, 400, "올바른 실습 반복 UUID를 입력하세요")
+			writeErr(w, 400, "Enter the correct practice repeat UUID")
 			return
 		}
 		path = strings.Replace(path, "{id}", parsed.String(), 1)
@@ -156,32 +156,32 @@ func (s *Server) proxyClosedLoopRange(w http.ResponseWriter, r *http.Request, me
 	cfg, configured := loadClosedLoopRangeConfig()
 	if cfg == nil {
 		if method == http.MethodGet && path == "/status" {
-			message := "AWS 실습 브리지가 연결되지 않았습니다"
+			message := "AWS lab bridge not connected"
 			if configured {
-				message = "실습 브리지의 서버 연결 설정을 확인하세요"
+				message = "Check the server connection settings for the hands-on bridge"
 			}
 			writeJSON(w, 200, map[string]any{"configured": configured, "ready": false, "message": message})
 			return
 		}
-		writeErr(w, 409, "실습 브리지의 서버 연결 설정을 먼저 확인하세요")
+		writeErr(w, 409, "First check the server connection settings for the hands-on bridge")
 		return
 	}
 	var body io.Reader
 	if method == http.MethodPost {
 		raw, err := io.ReadAll(io.LimitReader(r.Body, closedLoopRangeMaxBody+1))
 		if err != nil {
-			writeErr(w, 400, "실습 요청 본문을 읽지 못했습니다")
+			writeErr(w, 400, "I couldn't read the lab request text")
 			return
 		}
 		if len(raw) > closedLoopRangeMaxBody {
-			writeErr(w, 413, "실습 요청은 1 MiB 이하여야 합니다")
+			writeErr(w, 413, "The training request must be less than 1 MiB.")
 			return
 		}
 		if len(bytes.TrimSpace(raw)) == 0 {
 			raw = []byte(`{}`)
 		}
 		if _, err = decodeRangeJSON(raw); err != nil {
-			writeErr(w, 400, "실습 요청은 하나의 JSON 객체여야 합니다")
+			writeErr(w, 400, "The practice request must be a single JSON object")
 			return
 		}
 		body = bytes.NewReader(raw)
@@ -192,7 +192,7 @@ func (s *Server) proxyClosedLoopRange(w http.ResponseWriter, r *http.Request, me
 	endpoint.Path = path
 	req, err := http.NewRequestWithContext(ctx, method, endpoint.String(), body)
 	if err != nil {
-		writeErr(w, 502, "실습 브리지 요청을 만들지 못했습니다")
+		writeErr(w, 502, "Failed to create a training bridge request")
 		return
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.token)
@@ -204,19 +204,19 @@ func (s *Server) proxyClosedLoopRange(w http.ResponseWriter, r *http.Request, me
 	response, err := client.Do(req)
 	if err != nil {
 		if ctx.Err() != nil {
-			writeErr(w, 504, "실습 브리지 응답이 지연됐습니다. 새 공격을 반복 시작하지 말고 반복 기록 상태를 확인하세요")
+			writeErr(w, 504, "The hands-on bridge response has been delayed. Do not start a new attack over and over again. Check the status of the repeat history")
 			return
 		}
-		writeErr(w, 502, "실습 브리지에 연결하지 못했습니다. 서버 연결 상태를 확인하세요")
+		writeErr(w, 502, "Could not connect to the lab bridge. Check the server connection status")
 		return
 	}
 	defer response.Body.Close()
 	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
-		writeErr(w, 502, "실습 브리지 인증 설정을 확인하세요")
+		writeErr(w, 502, "Check the hands-on bridge certification settings")
 		return
 	}
 	if response.StatusCode >= 300 && response.StatusCode < 400 || response.StatusCode >= 500 {
-		writeErr(w, 502, "실습 브리지가 요청을 처리하지 못했습니다. 반복 기록 상태를 확인하세요")
+		writeErr(w, 502, "The lab bridge failed to process the request. Check the status of the repeat history")
 		return
 	}
 	// Original Sysmon XML and native search replies are only returned by the
@@ -229,23 +229,23 @@ func (s *Server) proxyClosedLoopRange(w http.ResponseWriter, r *http.Request, me
 	raw, err := io.ReadAll(io.LimitReader(response.Body, int64(maxResponse)+1))
 	if err != nil {
 		if ctx.Err() != nil {
-			writeErr(w, 504, "실습 브리지 응답이 지연됐습니다. 반복 기록 상태를 확인하세요")
+			writeErr(w, 504, "The hands-on bridge response has been delayed. Check the status of your repeat history")
 		} else {
-			writeErr(w, 502, "실습 브리지 응답을 끝까지 읽지 못했습니다")
+			writeErr(w, 502, "I couldn't read the hands-on bridge response to the end")
 		}
 		return
 	}
 	if len(raw) > maxResponse {
 		if export {
-			writeErr(w, 502, "실습 원본 내보내기가 64 MiB 한도를 초과했습니다")
+			writeErr(w, 502, "The original export of hands has exceeded the 64 MiB limit")
 		} else {
-			writeErr(w, 502, "실습 브리지 응답이 1 MiB 한도를 초과했습니다")
+			writeErr(w, 502, "Practice bridge response exceeded 1 MiB limit")
 		}
 		return
 	}
 	value, err := decodeRangeJSON(raw)
 	if err != nil {
-		writeErr(w, 502, "실습 브리지의 JSON 응답을 확인하지 못했습니다")
+		writeErr(w, 502, "Failed to check JSON response for practice bridge")
 		return
 	}
 	// Only structured client errors (validation/conflict/not found) are relayed.
@@ -253,7 +253,7 @@ func (s *Server) proxyClosedLoopRange(w http.ResponseWriter, r *http.Request, me
 	switch response.StatusCode {
 	case 200, 201, 202, 400, 404, 409, 422, 429:
 	default:
-		writeErr(w, 502, "실습 브리지 응답 상태를 확인하지 못했습니다")
+		writeErr(w, 502, "Failed to check practice bridge response status")
 		return
 	}
 	if path == "/status" && response.StatusCode == 200 {

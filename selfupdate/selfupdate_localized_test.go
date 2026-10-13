@@ -15,9 +15,9 @@ import (
 	"testing"
 )
 
-func hasHangul(s string) bool {
+func hasLatin(s string) bool {
 	for _, r := range s {
-		if r >= 0xAC00 && r <= 0xD7A3 {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
 			return true
 		}
 	}
@@ -33,15 +33,15 @@ func hasHanzi(s string) bool {
 	return false
 }
 
-// assertKoreanError 는 오류가 존재하고, 한글을 포함하며, 중국어 한자가 없음을 단언한다.
+// assertEnglishError 는 오류가 존재하고, 한글을 포함하며, 중국어 한자가 없음을 단언한다.
 // %w 로 감싼 하부 stdlib 오류의 영어는 허용된다(한자만 금지).
-func assertKoreanError(t *testing.T, label string, err error) {
+func assertEnglishError(t *testing.T, label string, err error) {
 	t.Helper()
 	if err == nil {
 		t.Fatalf("%s: 오류를 기대했으나 nil 이었습니다", label)
 	}
 	msg := err.Error()
-	if !hasHangul(msg) {
+	if !hasLatin(msg) {
 		t.Errorf("%s: 한글이 없습니다: %q", label, msg)
 	}
 	if hasHanzi(msg) {
@@ -68,13 +68,13 @@ func stubClient(status int, body string) *http.Client {
 // 문구 언어는 보지 않는다. 여기서는 두 거부 경로의 오류가 한국어인지 확인한다.
 func TestCheckURLErrorsLocalized(t *testing.T) {
 	nonHTTPS := checkURL(mustParse(t, "http://api.github.com/x"))
-	assertKoreanError(t, "non-https", nonHTTPS)
+	assertEnglishError(t, "non-https", nonHTTPS)
 	if !strings.Contains(nonHTTPS.Error(), "HTTPS") {
 		t.Errorf("non-https 오류에 HTTPS 표기가 없습니다: %q", nonHTTPS.Error())
 	}
 
 	nonGitHub := checkURL(mustParse(t, "https://evil.example.com/x"))
-	assertKoreanError(t, "non-github-host", nonGitHub)
+	assertEnglishError(t, "non-github-host", nonGitHub)
 	if !strings.Contains(nonGitHub.Error(), "GitHub") {
 		t.Errorf("non-github 오류에 GitHub 표기가 없습니다: %q", nonGitHub.Error())
 	}
@@ -86,25 +86,25 @@ func TestFetchLatestErrorsLocalized(t *testing.T) {
 	ctx := context.Background()
 
 	_, errRate := FetchLatest(ctx, stubClient(http.StatusForbidden, ""))
-	assertKoreanError(t, "rate-limited", errRate)
+	assertEnglishError(t, "rate-limited", errRate)
 	if !strings.Contains(errRate.Error(), "60") {
 		t.Errorf("요청 제한 오류에 60 표기가 없습니다: %q", errRate.Error())
 	}
 
 	_, errNF := FetchLatest(ctx, stubClient(http.StatusNotFound, ""))
-	assertKoreanError(t, "not-found", errNF)
+	assertEnglishError(t, "not-found", errNF)
 
 	_, errStatus := FetchLatest(ctx, stubClient(http.StatusInternalServerError, ""))
-	assertKoreanError(t, "bad-status", errStatus)
+	assertEnglishError(t, "bad-status", errStatus)
 	if !strings.Contains(errStatus.Error(), "GitHub") {
 		t.Errorf("상태 오류에 GitHub 표기가 없습니다: %q", errStatus.Error())
 	}
 
 	_, errJSON := FetchLatest(ctx, stubClient(http.StatusOK, "{not json"))
-	assertKoreanError(t, "bad-json", errJSON)
+	assertEnglishError(t, "bad-json", errJSON)
 
 	_, errTag := FetchLatest(ctx, stubClient(http.StatusOK, "{}"))
-	assertKoreanError(t, "missing-tag", errTag)
+	assertEnglishError(t, "missing-tag", errTag)
 	if !strings.Contains(errTag.Error(), "tag") {
 		t.Errorf("tag 누락 오류에 tag 표기가 없습니다: %q", errTag.Error())
 	}
@@ -116,5 +116,5 @@ func TestFetchLatestErrorsLocalized(t *testing.T) {
 func TestStageMissingAssetLocalized(t *testing.T) {
 	rel := &Release{TagName: "v9.9.9"} // Assets 비어 있음
 	err := Stage(context.Background(), &http.Client{}, rel, "0.0.1", nil)
-	assertKoreanError(t, "stage-missing-asset", err)
+	assertEnglishError(t, "stage-missing-asset", err)
 }
